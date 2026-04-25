@@ -25,13 +25,14 @@ jobs:
         working-directory: web
 
       - name: Copy static assets into standalone
+        working-directory: web
         run: |
-          cp -r web/public web/.next/standalone/web/public
-          cp -r web/.next/static web/.next/standalone/web/.next/static
-          cp web/server.js web/.next/standalone/web/server.js
+          cp -r public .next/standalone/public
+          cp -r .next/static .next/standalone/.next/static
+          cp server.js .next/standalone/server.js
 
       - uses: azure/webapps-deploy@v3
         with:
           app-name: newpng
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: web/.next/standalone/web
+          package: web/.next/standalone
