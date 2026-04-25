@@ -29,7 +29,6 @@ jobs:
         run: |
           cp -r public .next/standalone/public
           cp -r .next/static .next/standalone/.next/static
-          cp server.js .next/standalone/server.js
 
       - name: Zip artifact
         run: cd web/.next/standalone && zip -r ../../../deploy.zip .
