@@ -19,6 +19,7 @@ layers:
   - name: "warm studio background"
     elements:
       - type: rect
+        name: Background wash
         x: 0
         y: 0
         width: 760
@@ -37,6 +38,7 @@ layers:
             - offset: 1
               color: "#FFE0CA"
       - type: ellipse
+        name: Pink atmosphere glow
         cx: 225
         cy: 170
         rx: 210
@@ -52,6 +54,7 @@ layers:
             - offset: 1
               color: "#FFD1DC00"
       - type: ellipse
+        name: Golden atmosphere glow
         cx: 548
         cy: 220
         rx: 205
@@ -74,12 +77,14 @@ layers:
         radius: 18
     elements:
       - type: ellipse
+        name: Main soft shadow
         cx: 382
         cy: 527
         rx: 188
         ry: 34
         fill: "#B4530950"
       - type: ellipse
+        name: Contact shadow
         cx: 380
         cy: 510
         rx: 125
@@ -94,6 +99,7 @@ layers:
         radius: 20
     elements:
       - type: path
+        name: Peach glow
         d: "M 371 176 C 322 124 232 138 192 214 C 147 299 180 418 274 494 C 313 526 346 545 382 545 C 418 545 455 524 494 488 C 587 403 615 291 565 211 C 522 142 439 126 390 176 C 384 182 377 182 371 176 Z"
         fill: "#FF8FAB"
 
@@ -106,6 +112,7 @@ layers:
         color: "#9A34124D"
     elements:
       - type: path
+        name: Peach body silhouette
         d: "M 371 176 C 322 124 232 138 192 214 C 147 299 180 418 274 494 C 313 526 346 545 382 545 C 418 545 455 524 494 488 C 587 403 615 291 565 211 C 522 142 439 126 390 176 C 384 182 377 182 371 176 Z"
         fills:
           - fill:
@@ -158,6 +165,7 @@ layers:
   - name: "fruit sculpting"
     elements:
       - type: path
+        name: Left fruit groove
         d: "M 376 188 C 350 244 346 308 364 374 C 379 429 377 487 347 535"
         fill: "none"
         stroke:
@@ -165,6 +173,7 @@ layers:
           width: 5
           cap: round
       - type: path
+        name: Right fruit highlight groove
         d: "M 390 188 C 428 251 433 326 407 391 C 388 439 387 497 418 536"
         fill: "none"
         stroke:
@@ -172,6 +181,7 @@ layers:
           width: 4
           cap: round
       - type: path
+        name: Main glossy highlight
         d: "M 235 228 C 267 181 330 166 366 203 C 308 218 255 277 231 360 C 211 302 212 255 235 228 Z"
         fill:
           type: linear-gradient
@@ -187,6 +197,7 @@ layers:
             - offset: 1
               color: "#FFFFFF00"
       - type: path
+        name: Bottom gloss smile
         d: "M 252 463 C 291 506 337 526 383 527 C 431 527 474 507 516 463"
         fill: "none"
         stroke:
@@ -197,6 +208,7 @@ layers:
   - name: "satisfied face"
     elements:
       - type: ellipse
+        name: Left blush
         cx: 287
         cy: 365
         rx: 42
@@ -212,6 +224,7 @@ layers:
             - offset: 1
               color: "#FF5C8A00"
       - type: ellipse
+        name: Right blush
         cx: 476
         cy: 365
         rx: 42
@@ -227,6 +240,7 @@ layers:
             - offset: 1
               color: "#FF5C8A00"
       - type: path
+        name: Left happy eye
         d: "M 265 330 C 280 344 303 344 319 329"
         fill: "none"
         stroke:
@@ -234,6 +248,7 @@ layers:
           width: 6
           cap: round
       - type: path
+        name: Right happy eye
         d: "M 444 329 C 460 344 484 344 500 330"
         fill: "none"
         stroke:
@@ -241,6 +256,7 @@ layers:
           width: 6
           cap: round
       - type: path
+        name: Satisfied smile
         d: "M 333 400 C 353 425 408 425 430 400"
         fill: "none"
         stroke:
@@ -248,6 +264,7 @@ layers:
           width: 6
           cap: round
       - type: path
+        name: Smile highlight
         d: "M 358 413 C 374 424 391 424 407 413"
         fill: "none"
         stroke:
@@ -264,6 +281,7 @@ layers:
         color: "#78350F40"
     elements:
       - type: path
+        name: Stem
         d: "M 372 182 C 359 143 373 105 411 82 C 429 120 415 162 389 196 Z"
         fill:
           type: linear-gradient
@@ -280,6 +298,7 @@ layers:
           color: "#FED7AA90"
           width: 1.5
       - type: path
+        name: Leaf
         d: "M 392 147 C 430 88 506 66 572 100 C 541 165 462 194 392 147 Z"
         fills:
           - fill:
@@ -310,6 +329,7 @@ layers:
           color: "#F0FDF4A0"
           width: 2
       - type: path
+        name: Leaf vein
         d: "M 424 141 C 465 126 511 105 548 99"
         fill: "none"
         stroke:
@@ -321,24 +341,28 @@ layers:
     opacity: 0.9
     elements:
       - type: path
+        name: Left sparkle
         d: "M 159 196 L 171 222 L 198 234 L 171 246 L 159 272 L 147 246 L 120 234 L 147 222 Z"
         fill: "#FFFFFFAA"
         stroke:
           color: "#FDBA74"
           width: 1.2
       - type: path
+        name: Right sparkle
         d: "M 604 346 L 613 365 L 633 374 L 613 383 L 604 403 L 595 383 L 575 374 L 595 365 Z"
         fill: "#FFFFFFAA"
         stroke:
           color: "#FDBA74"
           width: 1.2
       - type: ellipse
+        name: Left dot sparkle
         cx: 185
         cy: 396
         rx: 8
         ry: 8
         fill: "#FFFFFFB0"
       - type: ellipse
+        name: Right dot sparkle
         cx: 590
         cy: 229
         rx: 7
@@ -349,6 +373,7 @@ layers:
     opacity: 0.82
     elements:
       - type: text
+        name: Caption
         x: 380
         y: 586
         content: "Satisfaction Peach"

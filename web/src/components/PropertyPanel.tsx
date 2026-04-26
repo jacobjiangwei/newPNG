@@ -17,7 +17,7 @@ import type {
 } from "../lib/types";
 import { getBoundingBox } from "../lib/hitTest";
 import { isEditablePathData } from "../lib/pathEditing";
-import { getElementDisplayName } from "../lib/elementLabels";
+import { getElementDisplayName, getElementTypeLabel } from "../lib/elementLabels";
 import type { AlignmentCommand, DistributionCommand, ElementAddress, EditorAction } from "../lib/editorState";
 
 interface PropertyPanelProps {
@@ -43,6 +43,7 @@ const DISTRIBUTE_BUTTONS: { label: string; direction: DistributionCommand; title
 ];
 
 type EditableElement = NpngElement & {
+  name?: string;
   x?: number;
   y?: number;
   width?: number;
@@ -198,6 +199,7 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
 
   const e = element as EditableElement;
   const selectedName = doc ? getElementDisplayName(doc, address) : `${e.type} #${address.elementIndex + 1}`;
+  const selectedType = getElementTypeLabel(element);
 
   const update = (props: Record<string, unknown>) => {
     dispatch({ type: "UPDATE_ELEMENT", address, props });
@@ -209,14 +211,24 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
 
   return (
     <div className="p-3 flex flex-col gap-1 text-xs overflow-auto">
-      <div className="text-zinc-400 font-medium mb-1 capitalize">{e.type}</div>
+      <div className="text-zinc-400 font-medium mb-1">{selectedType}</div>
 
       <Section title="Selected">
         <div className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1.5 text-blue-100 leading-snug">
           {selectedName}
         </div>
+        <label className="flex items-center gap-2 text-xs">
+          <span className="w-12 text-zinc-500">Name</span>
+          <input
+            type="text"
+            value={e.name ?? ""}
+            placeholder={`${selectedType} #${address.elementIndex + 1}`}
+            onChange={(ev) => update({ name: ev.target.value.trim() ? ev.target.value : null })}
+            className="flex-1 bg-zinc-800 border border-zinc-600 rounded px-1.5 py-0.5 text-zinc-200 text-xs"
+          />
+        </label>
         <div className="text-zinc-500 leading-relaxed">
-          Canvas badges show the same label. Use the Layers panel or overlap chooser when shapes sit on top of each other.
+          Type is the internal drawing primitive; name is what you recognize in the canvas, chooser, and layer list.
         </div>
       </Section>
 

@@ -56,6 +56,7 @@ export interface Constraints {
 
 export interface BaseElement {
   type: string;
+  name?: string;
   fill?: FillSpec;
   stroke?: StrokeSpec;
   transform?: TransformSpec;
