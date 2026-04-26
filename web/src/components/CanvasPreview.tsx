@@ -213,26 +213,31 @@ export default function CanvasPreview({
       ctx.setLineDash([]);
 
       if (selection.length === 1) {
-        for (const h of getHandles(box)) {
-          ctx.fillStyle = "#fff";
-          ctx.strokeStyle = "#3B82F6";
-          ctx.lineWidth = 1.5;
-          ctx.fillRect(h.x, h.y, h.size, h.size);
-          ctx.strokeRect(h.x, h.y, h.size, h.size);
+        const isEditablePath = elem.type === "path" && typeof elem.d === "string" && isEditablePathData(elem.d) && !elem.transform;
+
+        if (!isEditablePath) {
+          for (const h of getHandles(box)) {
+            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = "#3B82F6";
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(h.x, h.y, h.size, h.size);
+            ctx.strokeRect(h.x, h.y, h.size, h.size);
+          }
         }
 
-        if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
+        if (isEditablePath) {
+          const baseD = elem.d ?? "";
           const editingD =
             pathDrag &&
             pathDrag.address.layerIndex === sel.layerIndex &&
             pathDrag.address.elementIndex === sel.elementIndex
               ? pathDrag.currentD
-              : elem.d;
+              : baseD;
 
           ctx.save();
-          ctx.setLineDash([3, 3]);
-          ctx.strokeStyle = "#94A3B8";
-          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = "#FDE68A";
+          ctx.lineWidth = 1.5;
           for (const line of getPathControlLines(editingD)) {
             ctx.beginPath();
             ctx.moveTo(line.from.x, line.from.y);
@@ -244,13 +249,32 @@ export default function CanvasPreview({
           for (const handle of getPathHandles(editingD)) {
             const isAnchor = handle.role === "anchor";
             ctx.beginPath();
-            ctx.arc(handle.x, handle.y, isAnchor ? 4 : 3, 0, Math.PI * 2);
-            ctx.fillStyle = isAnchor ? "#FFFFFF" : "#3B82F6";
-            ctx.strokeStyle = isAnchor ? "#3B82F6" : "#BFDBFE";
-            ctx.lineWidth = 1.5;
+            ctx.arc(handle.x, handle.y, isAnchor ? 7 : 5, 0, Math.PI * 2);
+            ctx.fillStyle = isAnchor ? "#FFFFFF" : "#60A5FA";
+            ctx.strokeStyle = isAnchor ? "#2563EB" : "#EFF6FF";
+            ctx.lineWidth = isAnchor ? 2.5 : 2;
             ctx.fill();
             ctx.stroke();
+
+            if (isAnchor) {
+              ctx.beginPath();
+              ctx.arc(handle.x, handle.y, 2, 0, Math.PI * 2);
+              ctx.fillStyle = "#2563EB";
+              ctx.fill();
+            }
           }
+
+          const hint = "Path edit: drag white anchors or blue handles";
+          ctx.font = "12px sans-serif";
+          const textWidth = ctx.measureText(hint).width;
+          const hintX = box.x;
+          const hintY = Math.max(18, box.y - 14);
+          ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+          ctx.fillRect(hintX - 6, hintY - 15, textWidth + 12, 20);
+          ctx.strokeStyle = "rgba(96, 165, 250, 0.8)";
+          ctx.strokeRect(hintX - 6, hintY - 15, textWidth + 12, 20);
+          ctx.fillStyle = "#DBEAFE";
+          ctx.fillText(hint, hintX, hintY);
           ctx.restore();
         }
       }
@@ -373,7 +397,7 @@ export default function CanvasPreview({
       const elem = layer?.elements?.[sel.elementIndex];
       if (elem) {
         if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
-          const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(4, 8 / zoom));
+          const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(8, 14 / zoom));
           if (pathHandle) {
             setPathDrag({
               address: sel,
@@ -550,7 +574,7 @@ export default function CanvasPreview({
       const elem = layer?.elements?.[sel.elementIndex];
       if (elem) {
         if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
-          const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(4, 8 / zoom));
+          const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(8, 14 / zoom));
           if (pathHandle) {
             const canvas = overlayRef.current ?? canvasRef.current;
             if (canvas) canvas.style.cursor = "pointer";

@@ -16,6 +16,7 @@ import type {
   Layer,
 } from "../lib/types";
 import { getBoundingBox } from "../lib/hitTest";
+import { isEditablePathData } from "../lib/pathEditing";
 import type { ElementAddress, EditorAction } from "../lib/editorState";
 
 interface PropertyPanelProps {
@@ -138,6 +139,20 @@ export default function PropertyPanel({ element, address, doc, dispatch }: Prope
   return (
     <div className="p-3 flex flex-col gap-1 text-xs overflow-auto">
       <div className="text-zinc-400 font-medium mb-1 capitalize">{e.type}</div>
+
+      {e.type === "path" && (
+        <Section title="Path Edit">
+          {e.d && isEditablePathData(e.d) && !e.transform ? (
+            <div className="text-zinc-400 leading-relaxed">
+              Drag the large white anchors or blue curve handles directly on the canvas.
+            </div>
+          ) : (
+            <div className="text-zinc-500 leading-relaxed">
+              Node editing is available for untransformed M/L/C/Q paths. Clear rotation/transform first to edit nodes.
+            </div>
+          )}
+        </Section>
+      )}
 
       {/* Position/size for rect-like elements */}
       {(e.type === "rect" || e.type === "image" || e.type === "frame" || e.type === "component-instance") && (
