@@ -62,7 +62,10 @@ export default function Toolbar({
 
   return (
     <div className="flex items-center gap-1 px-3 py-1.5 bg-[#1a1a1a] border-b border-zinc-700">
-      <span className="text-sm font-bold tracking-wider text-zinc-300 mr-3">NewPNG</span>
+      <div className="mr-3 flex min-w-[170px] flex-col leading-tight">
+        <span className="text-sm font-bold tracking-wider text-zinc-100">NewPNG</span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-blue-300/70">Text-to-design</span>
+      </div>
 
       <div className="flex items-center gap-0.5 bg-zinc-800 rounded p-0.5">
         {BASIC_TOOLS.map((t) => (
@@ -214,7 +217,7 @@ export default function Toolbar({
         onClick={onDownloadNpng}
         className="px-3 py-1 text-xs bg-zinc-700 rounded hover:bg-zinc-600 text-zinc-300"
       >
-        Download .npng
+        Download source
       </button>
     </div>
   );

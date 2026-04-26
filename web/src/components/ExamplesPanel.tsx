@@ -190,11 +190,11 @@ export default function ExamplesPanel({ onSelect }: ExamplesPanelProps) {
   return (
     <div className="flex flex-col h-full bg-[#1e1e1e]">
       <div className="px-3 py-2 text-xs font-semibold text-zinc-400 border-b border-zinc-700">
-        Examples
+        Design Sources
       </div>
       <div className="flex-1 overflow-auto p-3 space-y-2">
         <p className="text-zinc-500 text-xs mb-3">
-          Load an example or paste npng YAML from any source into the editor.
+          Load editable npng examples or paste text-designed graphics from any source.
         </p>
         {EXAMPLES.map((ex, i) => (
           <button
@@ -210,7 +210,7 @@ export default function ExamplesPanel({ onSelect }: ExamplesPanelProps) {
           onClick={handlePaste}
           className="w-full text-left px-3 py-2 text-sm bg-zinc-800 rounded hover:bg-zinc-700 text-zinc-300"
         >
-          Paste from clipboard
+          Paste npng from clipboard
         </button>
       </div>
     </div>

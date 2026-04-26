@@ -88,12 +88,18 @@ export default function ChatPanel({ onYamlGenerated }: ChatPanelProps) {
   return (
     <div className="flex flex-col h-full bg-[#1e1e1e]">
       <div className="px-3 py-2 text-xs font-semibold text-zinc-400 border-b border-zinc-700">
-        AI Chat
+        Text-to-Design AI
       </div>
       <div className="flex-1 overflow-auto p-3 space-y-3">
         {messages.length === 0 && (
-          <div className="text-zinc-500 text-sm">
-            Ask Claude to generate an npng image. e.g. &quot;Draw a red circle on a white background&quot;
+          <div className="space-y-2 text-sm">
+            <p className="text-zinc-300 font-medium">Generate editable design source, not a flat bitmap.</p>
+            <p className="text-zinc-500">
+              Ask for a poster, card, icon, product mockup, or visual system. Claude returns npng YAML that stays editable and exports sharply at any scale.
+            </p>
+            <p className="text-zinc-600 text-xs">
+              Try: &quot;Design a glassmorphism launch card for an AI design tool.&quot;
+            </p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -119,7 +125,7 @@ export default function ChatPanel({ onYamlGenerated }: ChatPanelProps) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Describe an image..."
+          placeholder="Describe the design you want..."
           className="flex-1 bg-zinc-800 text-zinc-200 px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
           disabled={loading}
         />

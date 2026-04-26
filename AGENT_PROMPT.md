@@ -1,10 +1,16 @@
-# NewPNG — Next Generation AI Designer
+# NewPNG — AI-Native Text-to-Design Studio
 
 ## Project Vision
 
-一个 AI 原生的在线设计工具。用户用自然语言描述想要的图形，AI 生成 npng 格式的矢量图，用户可以在网页上实时预览、手动编辑、导出。
+NewPNG 是一个 AI 原生的 text-to-design 格式和在线设计工具。普通 AI 图片工具会给用户一张很难修改的 bitmap；NewPNG 要生成的是可编辑的设计源码。用户可以用自然语言或 npng YAML 描述设计稿，系统生成可编辑、不失真、接近 Figma 表达能力的矢量图形，并支持实时预览、可视化微调、源码编辑和高清导出。
 
-**核心定位**：AI 生成 + 人类可编辑的矢量设计平台。不是 Figma 的替代品，而是一个全新品类——AI 驱动的图形创作工具。
+**核心定位**：Figma-like visual expression + text-native generation/transmission + AI-native editing.
+
+NewPNG 不是 Mermaid 式流程图工具，也不是 Photoshop 式像素编辑器。它的 mission 是让高质量设计稿像文本一样生成、传输、diff、复现和二次编辑：传的是结构，不是模糊像素。
+
+核心用户痛点：AI 生成的图片如果已经 80% 正确，用户不应该只能重新 prompt。用户应该能像在 Figma 中一样修改文字、移动图层、改颜色、调路径、高清导出。
+
+适合的目标图形包括：UI mockup、icon、poster、card、banner、logo、product visual、technical illustration、infographic，以及任何由图层、文本、形状、路径、样式组成的结构化视觉内容。
 
 ## Architecture Overview
 
@@ -13,8 +19,8 @@
 │                  Web App                     │
 │                                              │
 │  ┌──────────┐  ┌───────────┐  ┌───────────┐ │
-│  │ AI Chat  │  │  Canvas   │  │   YAML    │ │
-│  │  Panel   │→ │  Preview  │↔ │  Editor   │ │
+│  │ Prompt   │  │  Canvas   │  │   npng    │ │
+│  │ to YAML  │→ │  Preview  │↔ │  Source   │ │
 │  │          │  │ (renderer)│  │           │ │
 │  └──────────┘  └───────────┘  └───────────┘ │
 │       ↓                                      │
@@ -24,15 +30,15 @@
 
 ### 三个核心面板
 
-1. **AI Chat Panel**（左）：用户输入自然语言描述，调用 Claude API 生成 npng YAML
-2. **Canvas Preview**（中）：实时渲染 npng → Canvas 2D / SVG DOM
-3. **YAML Editor**（右）：代码编辑器，编辑 YAML 实时刷新预览
+1. **Text-to-Design AI**（左）：用户输入自然语言设计意图，调用 Claude API 生成 npng YAML
+2. **Canvas Preview**（中）：实时渲染 npng → Canvas 2D，保持矢量结构与高清输出
+3. **npng Source**（右）：代码编辑器，编辑 YAML 实时刷新预览
 
 ### 双向同步
 
 - AI 生成 YAML → 预览自动更新
 - 手动改 YAML → 预览自动更新
-- （未来）拖拽编辑画布 → YAML 自动更新
+- 画布编辑 → YAML 自动更新
 
 ## Tech Stack
 
@@ -54,7 +60,7 @@
 
 1. **Next.js 项目搭建**
    - 创建 `web/` 目录，初始化 Next.js + TypeScript + Tailwind
-   - 三栏布局：AI 聊天 | 画布预览 | YAML 编辑器
+    - 三栏布局：Text-to-Design AI | 画布预览 | npng Source
 
 2. **浏览器端 npng 渲染器**
    - 将现有 Python 渲染器 (`renderer/render.py`) 的核心逻辑移植为 TypeScript
@@ -74,7 +80,7 @@
 4. **AI 生成接口**
    - Next.js API Route 调用 Claude API
    - System prompt 包含 npng 格式规范 + 示例
-   - 用户输入描述 → Claude 返回 npng YAML → 填入编辑器 → 触发渲染
+    - 用户输入设计描述 → Claude 返回可编辑 npng YAML → 填入编辑器 → 触发渲染
    - 流式输出（streaming），用户能看到 YAML 逐步生成
 
 5. **导出功能**
@@ -82,15 +88,16 @@
    - 导出 SVG（npng → SVG 转换）
    - 下载 .npng 源文件
 
-### Phase 2: 可视化编辑
+### Phase 2: Figma-like 可视化编辑
 
 在 MVP 基础上加交互式编辑能力：
 
 - 画布上选中元素（点击选中，显示边框/控制点）
-- 拖拽移动元素
+- 拖拽移动、缩放、旋转元素
+- 文本框、路径节点、分组、锁定、图层顺序
 - 属性面板（修改颜色、大小、位置等）
 - 修改操作同步回 YAML
-- 图层面板（显示 layers 结构，拖拽排序）
+- 图层面板（显示 layers 结构，视觉顺序与渲染顺序一致）
 
 ### Phase 3: 协作与高级功能
 
@@ -127,7 +134,7 @@ az webapp deployment source config-local-git --name newpng-app --resource-group 
 - **当前规范**：`spec/npng-v3.md`（v0.3 基线，v0.4 在此基础上加了布尔运算/fill rule/opacity/transform origin）
 - **格式路线图**：`spec/FORMAT_ROADMAP.md`（对标 Figma + Photoshop 全部能力的演进计划）
 
-格式的目标是无限接近 Figma + Photoshop 能做的所有操作。Web App 的渲染器应逐步跟进格式的演进。
+格式的目标是承载 Figma-like 设计稿的结构：图层、对象、文本、样式、组件、约束、效果和导出语义。Web App 的渲染器和编辑器应逐步跟进格式演进，让 npng 成为 AI 与人类都能稳定编辑的设计源码。
 
 ## Existing Assets
 
@@ -143,10 +150,11 @@ az webapp deployment source config-local-git --name newpng-app --resource-group 
 
 ## Key Lessons from Format Development
 
-1. **LLM 无法手写复杂贝塞尔路径** — 对于 AI 生成，应引导 LLM 使用简单几何图元（rect, ellipse）+ 布尔运算组合，而非手写复杂 path
-2. **几何图形效果好** — 卡通人物、简单 logo、图标等用基本图元堆叠就能做好
+1. **传结构，不传像素** — npng 的价值是可编辑、可 diff、可复现，而不是把 bitmap 包进文本
+2. **LLM 无法稳定手写复杂贝塞尔路径** — 对于 AI 生成，应引导 LLM 使用简单几何图元、样式和组合，而非手写复杂 path
 3. **格式能力决定上限** — AI 能生成什么取决于格式支持什么，而非 AI 多聪明
-4. **双向编辑是核心体验** — AI 生成初稿 + 人类微调 = 最佳工作流
+4. **双向编辑是核心体验** — AI 生成初稿 + 人类微调 + AI 局部修改 = 最佳工作流
+5. **高清导出是底线** — 文本源必须能重绘成任意 DPI 的清晰输出
 
 ## Anti-Patterns
 

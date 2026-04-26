@@ -68,8 +68,9 @@ export default function YamlEditor({ value, onChange }: YamlEditorProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-3 py-2 text-xs font-semibold text-zinc-400 bg-[#1e1e1e] border-b border-zinc-700">
-        YAML Editor
+      <div className="px-3 py-2 bg-[#1e1e1e] border-b border-zinc-700">
+        <div className="text-xs font-semibold text-zinc-300">npng Source</div>
+        <div className="text-[10px] text-zinc-500">Portable text protocol for editable, lossless graphics</div>
       </div>
       <div ref={editorRef} className="flex-1 overflow-auto min-h-0" />
     </div>

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NewPNG",
-  description: "AI-powered vector graphics editor",
+  title: "NewPNG - Text-to-Design Studio",
+  description: "AI-native text-to-design editor for editable, lossless, Figma-like vector graphics.",
 };
 
 export default function RootLayout({

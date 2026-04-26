@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducer, useCallback, useState } from "react";
+import Link from "next/link";
 import { editorReducer, createInitialState } from "../lib/editorState";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import Toolbar from "../components/Toolbar";
@@ -1175,7 +1176,7 @@ layers:
       - type: text
         x: 300
         y: 330
-        content: "Visual Vector Graphics"
+        content: "Text-to-Design Graphics"
         font_size: 14
         font_family: "sans-serif"
         fill: "#FFFFFF60"
@@ -1285,7 +1286,130 @@ layers:
           dash: [2, 12]
 `;
 
-export default function Home() {
+function LandingPage() {
+  const valueCards = [
+    {
+      title: "AI output stays editable",
+      body: "Most AI image tools stop at a bitmap. NewPNG keeps layers, text, paths, and styles as design source you can tweak.",
+    },
+    {
+      title: "Figma-like, not flat",
+      body: "Layers, shapes, paths, text boxes, groups, styles, and effects remain editable after AI generation.",
+    },
+    {
+      title: "Lossless by default",
+      body: "Render from vector source at preview size, 4x PNG, or future device-specific resolutions without blur.",
+    },
+  ];
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-[#07090f] text-zinc-100">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(59,130,246,0.28),transparent_32%),radial-gradient(circle_at_82%_28%,rgba(168,85,247,0.22),transparent_30%),radial-gradient(circle_at_55%_82%,rgba(20,184,166,0.14),transparent_30%)]" />
+      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-6 lg:px-10">
+        <header className="flex items-center justify-between">
+          <div>
+            <div className="text-lg font-bold tracking-[0.22em]">NewPNG</div>
+            <div className="text-[11px] uppercase tracking-[0.28em] text-blue-300/80">AI-native text-to-design</div>
+          </div>
+          <Link
+            href="/editing"
+            className="rounded-full border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm text-zinc-300 transition hover:border-blue-400 hover:text-white"
+          >
+            Open Studio
+          </Link>
+        </header>
+
+        <section className="grid flex-1 items-center gap-10 py-12 lg:grid-cols-[1.05fr_0.95fr]">
+          <div>
+            <div className="mb-5 inline-flex rounded-full border border-blue-400/25 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-200">
+              Figma-like graphics as editable text source
+            </div>
+            <h1 className="max-w-4xl text-5xl font-semibold tracking-[-0.055em] text-white sm:text-6xl lg:text-7xl">
+              Generate with AI. Edit it like a design file.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300">
+              AI image generators give you pixels that are hard to change. NewPNG generates Figma-like vector source instead: layered, editable, portable as text, and rendered sharply at any size.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/editing"
+                className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-zinc-950 shadow-[0_0_40px_rgba(255,255,255,0.18)] transition hover:bg-blue-100"
+              >
+                Try an editable design
+              </Link>
+              <Link
+                href="/editing"
+                className="rounded-full border border-zinc-600 bg-zinc-950/60 px-6 py-3 text-sm font-semibold text-zinc-100 transition hover:border-blue-400 hover:bg-blue-500/10"
+              >
+                Start from source
+              </Link>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-2 text-xs text-zinc-400">
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">Prompt to design</span>
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">Editable YAML</span>
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">Vector layers</span>
+              <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1.5">High-DPI PNG</span>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute -inset-6 rounded-[2rem] bg-blue-500/10 blur-3xl" />
+            <div className="relative overflow-hidden rounded-[2rem] border border-zinc-700/80 bg-zinc-950/80 shadow-2xl">
+              <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
+                <span className="ml-3 text-xs text-zinc-500">npng source to editable design</span>
+              </div>
+              <div className="grid min-h-[430px] grid-cols-[0.88fr_1.12fr]">
+                <div className="border-r border-zinc-800 bg-[#10131c] p-5 font-mono text-[11px] leading-5 text-zinc-400">
+                  <div className="text-blue-300">npng: &quot;0.4&quot;</div>
+                  <div>canvas:</div>
+                  <div className="pl-4">width: 760</div>
+                  <div className="pl-4">height: 620</div>
+                  <div>layers:</div>
+                  <div className="pl-4 text-purple-300">- name: hero card</div>
+                  <div className="pl-8">elements:</div>
+                  <div className="pl-10 text-emerald-300">- type: rect</div>
+                  <div className="pl-12">rx: 28</div>
+                  <div className="pl-12">fill: glass-gradient</div>
+                  <div className="pl-10 text-emerald-300">- type: text</div>
+                  <div className="pl-12">content: Launch faster</div>
+                  <div className="pl-12">width: 320</div>
+                  <div className="mt-4 rounded-lg border border-blue-400/20 bg-blue-400/10 p-3 font-sans text-xs leading-5 text-blue-100">
+                    If the AI result is almost right, edit the actual source: change colors, move layers, rewrite text, and export sharper.
+                  </div>
+                </div>
+                <div className="relative overflow-hidden bg-[radial-gradient(circle_at_34%_24%,rgba(96,165,250,0.45),transparent_25%),radial-gradient(circle_at_72%_64%,rgba(236,72,153,0.32),transparent_28%),#0f1020] p-6">
+                  <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:32px_32px]" />
+                  <div className="relative mt-10 rounded-[1.6rem] border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur">
+                    <div className="mb-14 h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-300 via-fuchsia-300 to-amber-200 shadow-lg" />
+                    <div className="text-3xl font-semibold tracking-tight text-white">Launch faster</div>
+                    <div className="mt-3 max-w-[280px] text-sm leading-6 text-white/65">
+                      Prompt-generated design source that stays layered, editable, and lossless.
+                    </div>
+                    <div className="mt-6 inline-flex rounded-full bg-white px-4 py-2 text-xs font-semibold text-zinc-950">Export @4x</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-3 pb-8 md:grid-cols-3">
+          {valueCards.map((card) => (
+            <div key={card.title} className="rounded-2xl border border-zinc-800 bg-zinc-950/55 p-5">
+              <div className="text-sm font-semibold text-white">{card.title}</div>
+              <div className="mt-2 text-sm leading-6 text-zinc-400">{card.body}</div>
+            </div>
+          ))}
+        </section>
+      </div>
+    </main>
+  );
+}
+
+export function DesignStudio() {
   const [state, dispatch] = useReducer(editorReducer, DEFAULT_YAML, createInitialState);
   const [yamlOpen, setYamlOpen] = useState(true);
   const [exportScale, setExportScale] = useState(4);
@@ -1444,7 +1568,7 @@ export default function Home() {
               className="w-full px-3 py-2 text-xs font-semibold text-zinc-400 bg-[#1e1e1e] hover:bg-zinc-800 text-left flex items-center gap-1"
             >
               <span className={`transition-transform ${yamlOpen ? "rotate-90" : ""}`}>▶</span>
-              YAML Editor
+              npng Source
             </button>
             {yamlOpen && (
               <div className="h-[300px]">
@@ -1456,4 +1580,8 @@ export default function Home() {
       </div>
     </div>
   );
+}
+
+export default function Home() {
+  return <LandingPage />;
 }

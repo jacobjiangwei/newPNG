@@ -1,8 +1,14 @@
-# NewPNG Phase 1 MVP - Implementation Progress
+# NewPNG Implementation Progress
 
-## Status: COMPLETE
+## Mission
 
-### Completed Steps
+NewPNG is an AI-native text-to-design format and editor for editable, lossless, Figma-like vector graphics. The product goal is to make design files as easy to generate, transmit, diff, and remix as text while preserving high-quality visual output.
+
+## Status
+
+Phase 1 MVP is complete. The editor is now moving into Figma-like visual editing foundations: layers, selection, transforms, grouping, locking, text boxes, path editing, and high-DPI export.
+
+### Phase 1 Completed Steps
 - [x] Step 1: Install dependencies (js-yaml, codemirror, @codemirror/lang-yaml, @codemirror/theme-one-dark, @codemirror/basic-setup, @types/js-yaml)
 - [x] Step 2: TypeScript types (`web/src/lib/types.ts`)
 - [x] Step 3: Color parsing (`web/src/lib/colors.ts`)
@@ -47,6 +53,17 @@ web/src/
 - Clip paths, masks
 - Defs/use references
 - Per-element opacity
+
+### Visual Editing Foundations Added
+
+- Layers panel with visual top-to-bottom ordering
+- Selection, movement, resizing, rotation handle
+- Group / ungroup
+- Layer and element lock / unlock
+- Text boxes with wrapping and line height
+- Path node editing, anchor insert, anchor delete
+- High-DPI PNG export scale controls
+- Text stroke and multi-stroke rendering
 
 ### To Run
 ```bash

@@ -9,8 +9,10 @@ export function useKeyboardShortcuts(
   parsedDoc: NpngDocument | null,
   zoom: number,
   onFitToScreen: () => void,
+  enabled = true,
 ) {
   useEffect(() => {
+    if (!enabled) return;
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
@@ -99,5 +101,5 @@ export function useKeyboardShortcuts(
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [dispatch, selection, parsedDoc, zoom, onFitToScreen]);
+  }, [dispatch, selection, parsedDoc, zoom, onFitToScreen, enabled]);
 }

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-const SYSTEM_PROMPT = `You are an expert at creating images in the npng format (NewPNG). npng is a YAML-based vector graphics format.
+const SYSTEM_PROMPT = `You are NewPNG's text-to-design engine. Create Figma-like editable vector designs in the npng format, not flat bitmap descriptions. npng is a YAML-based, AI-native graphics source format optimized for portable, lossless, editable design files.
 
 Here is the npng format specification:
 
@@ -24,7 +24,7 @@ Element types:
 1. rect: {type: rect, x, y, width, height, rx, ry, fill, stroke, transform, opacity}
 2. ellipse: {type: ellipse, cx, cy, rx, ry, fill, stroke, transform, opacity}
 3. line: {type: line, x1, y1, x2, y2, stroke, transform}
-4. text: {type: text, x, y, content, font_size, font_family, font_weight, align (left|center|right), fill, transform}
+4. text: {type: text, x, y, width, line_height, content, font_size, font_family, font_weight, align (left|center|right), fill, stroke, transform}
 5. path: {type: path, d (SVG path data), fill, stroke, fill_rule (nonzero|evenodd), transform}
 6. group: {type: group, elements: [...], transform, opacity}
 7. use: {type: use, ref: "def-id", x, y, transform}
@@ -38,9 +38,9 @@ Stroke: {color, width, dash: [dashLen, gapLen], cap: butt|round|square, join: mi
 
 Transform: {translate: [x, y], rotate: degrees, scale: number or [sx, sy], origin: [ox, oy]}
 
-When the user asks you to create an image, respond with a YAML code block containing valid npng. Always wrap your npng output in \`\`\`yaml ... \`\`\` code fences.
+When the user asks you to create a design, respond with a YAML code block containing valid npng. Always wrap your npng output in \`\`\`yaml ... \`\`\` code fences.
 
-Be creative and make visually appealing images. Use gradients, multiple layers, and proper composition.`;
+Make the result feel like an editable design file: use semantic layer names, object names, grouped structure, text boxes, reusable defs where helpful, gradients, multiple layers, and precise composition. Prefer simple editable shapes over huge opaque paths when possible, because users will refine the design visually and in YAML.`;
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
