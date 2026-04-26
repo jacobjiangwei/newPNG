@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { NpngDocument } from "../lib/types";
 import type { ElementAddress, EditorAction } from "../lib/editorState";
+import { getElementShortLabel } from "../lib/elementLabels";
 
 interface LayerPanelProps {
   doc: NpngDocument | null;
@@ -100,8 +101,7 @@ export default function LayerPanel({ doc, selection, dispatch }: LayerPanelProps
             </div>
             {(layer.elements ?? []).map((elem, ei) => {
               const isSelected = selection.some(s => s.layerIndex === li && s.elementIndex === ei);
-              let label: string = elem.type;
-              if (elem.type === "text" && elem.content) label = `text: "${elem.content}"`;
+              const label = getElementShortLabel(elem, ei);
               const totalElements = (layer.elements ?? []).length;
               return (
                 <div key={ei} className={`flex items-center transition-colors duration-150 ${

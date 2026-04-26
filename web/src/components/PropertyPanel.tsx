@@ -17,6 +17,7 @@ import type {
 } from "../lib/types";
 import { getBoundingBox } from "../lib/hitTest";
 import { isEditablePathData } from "../lib/pathEditing";
+import { getElementDisplayName } from "../lib/elementLabels";
 import type { AlignmentCommand, DistributionCommand, ElementAddress, EditorAction } from "../lib/editorState";
 
 interface PropertyPanelProps {
@@ -181,15 +182,22 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
             </div>
           </Section>
           <div className="text-zinc-500">
-            Drag on canvas to move together. Cmd/Ctrl+D duplicates, arrow keys nudge, Cmd/Ctrl+A selects all.
+            Drag on canvas to move together. If objects overlap, click the stack and choose the exact object.
+            Cmd/Ctrl+D duplicates, arrow keys nudge, Cmd/Ctrl+A selects all.
           </div>
         </div>
       );
     }
-    return <div className="p-3 text-xs text-zinc-500">No selection</div>;
+    return (
+      <div className="p-3 text-xs text-zinc-500 leading-relaxed">
+        <div className="text-zinc-400 font-medium mb-1">No selection</div>
+        Hover an object to see its layer/name label. If multiple objects overlap, click once to open the chooser, then pick the exact object.
+      </div>
+    );
   }
 
   const e = element as EditableElement;
+  const selectedName = doc ? getElementDisplayName(doc, address) : `${e.type} #${address.elementIndex + 1}`;
 
   const update = (props: Record<string, unknown>) => {
     dispatch({ type: "UPDATE_ELEMENT", address, props });
@@ -202,6 +210,15 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
   return (
     <div className="p-3 flex flex-col gap-1 text-xs overflow-auto">
       <div className="text-zinc-400 font-medium mb-1 capitalize">{e.type}</div>
+
+      <Section title="Selected">
+        <div className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1.5 text-blue-100 leading-snug">
+          {selectedName}
+        </div>
+        <div className="text-zinc-500 leading-relaxed">
+          Canvas badges show the same label. Use the Layers panel or overlap chooser when shapes sit on top of each other.
+        </div>
+      </Section>
 
       {e.type === "path" && (
         <Section title="Path Edit">

@@ -5,6 +5,7 @@ import yaml from "js-yaml";
 import { renderNpng } from "../lib/renderer";
 import { hitTestAll, hitTestBox, getBoundingBox, getSelectionBoundingBox, mergeBoundingBoxes, type BoundingBox } from "../lib/hitTest";
 import { getHandles, getHandleAtPoint, cursorForHandle, applyMove, applyResize, getOrigProps } from "../lib/canvasInteraction";
+import { getElementDisplayName } from "../lib/elementLabels";
 import { generateShapeForTool } from "../lib/presetShapes";
 import { getPathControlLines, getPathHandleAtPoint, getPathHandles, isEditablePathData, updatePathHandle } from "../lib/pathEditing";
 import type { NpngDocument, NpngElement } from "../lib/types";
@@ -45,6 +46,19 @@ interface MarqueeState {
   append: boolean;
 }
 
+interface HoverState {
+  x: number;
+  y: number;
+  hits: ElementAddress[];
+}
+
+interface HitMenuState {
+  left: number;
+  top: number;
+  hits: ElementAddress[];
+  append: boolean;
+}
+
 const DRAG_THRESHOLD = 3;
 
 function normalizeBox(startX: number, startY: number, currentX: number, currentY: number): BoundingBox {
@@ -60,6 +74,24 @@ function addressEquals(a: ElementAddress, b: ElementAddress): boolean {
   return a.layerIndex === b.layerIndex && a.elementIndex === b.elementIndex;
 }
 
+function drawBadge(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, tone: "blue" | "amber" = "blue"): void {
+  ctx.save();
+  ctx.font = "12px sans-serif";
+  const paddingX = 6;
+  const width = ctx.measureText(text).width + paddingX * 2;
+  const height = 20;
+  const drawX = Math.max(4, Math.min(x, ctx.canvas.width - width - 4));
+  const drawY = Math.max(height + 4, Math.min(y, ctx.canvas.height - 4));
+  ctx.fillStyle = tone === "amber" ? "rgba(69, 26, 3, 0.9)" : "rgba(15, 23, 42, 0.9)";
+  ctx.strokeStyle = tone === "amber" ? "rgba(251, 191, 36, 0.9)" : "rgba(96, 165, 250, 0.9)";
+  ctx.lineWidth = 1;
+  ctx.fillRect(drawX, drawY - height, width, height);
+  ctx.strokeRect(drawX, drawY - height, width, height);
+  ctx.fillStyle = tone === "amber" ? "#FEF3C7" : "#DBEAFE";
+  ctx.fillText(text, drawX + paddingX, drawY - 6);
+  ctx.restore();
+}
+
 export default function CanvasPreview({
   yamlText, parsedDoc, selection, activeTool, dragState, drawState, penState, polyState,
   zoom, panX, panY, showGrid, gridSize, dispatch,
@@ -71,8 +103,10 @@ export default function CanvasPreview({
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [pathDrag, setPathDrag] = useState<PathDragState | null>(null);
   const [marquee, setMarquee] = useState<MarqueeState | null>(null);
+  const [hoverState, setHoverState] = useState<HoverState | null>(null);
+  const [hitMenu, setHitMenu] = useState<HitMenuState | null>(null);
+  const [pendingHitMenu, setPendingHitMenu] = useState<HitMenuState | null>(null);
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
-  const clickCycleRef = useRef<{ x: number; y: number; index: number }>({ x: -1, y: -1, index: 0 });
 
   // Space key tracking
   useEffect(() => {
@@ -82,6 +116,9 @@ export default function CanvasPreview({
         setSpaceHeld(true);
       }
       if (e.key === "Escape") {
+        setHitMenu(null);
+        setPendingHitMenu(null);
+        setHoverState(null);
         if (penState) dispatch({ type: "CANCEL_PEN" });
         if (polyState) dispatch({ type: "CANCEL_POLY" });
       }
@@ -234,6 +271,30 @@ export default function CanvasPreview({
       ctx.setLineDash([]);
     }
 
+    if (
+      activeTool === "select" &&
+      hoverState &&
+      !dragState &&
+      !pathDrag &&
+      !marquee &&
+      parsedDoc?.layers
+    ) {
+      const topHit = hoverState.hits[0];
+      const elem = parsedDoc.layers[topHit.layerIndex]?.elements?.[topHit.elementIndex];
+      if (elem) {
+        const box = getBoundingBox(elem);
+        ctx.strokeStyle = "#F59E0B";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]);
+        ctx.strokeRect(box.x, box.y, box.width, box.height);
+        ctx.setLineDash([]);
+        const label = hoverState.hits.length > 1
+          ? `${hoverState.hits.length} objects here - click to choose`
+          : getElementDisplayName(parsedDoc, topHit);
+        drawBadge(ctx, label, hoverState.x + 12, hoverState.y - 10, hoverState.hits.length > 1 ? "amber" : "blue");
+      }
+    }
+
     if (!selection.length || !parsedDoc?.layers) return;
     const selectionBox = getSelectionBoundingBox(parsedDoc, selection);
     for (const sel of selection) {
@@ -247,6 +308,7 @@ export default function CanvasPreview({
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(box.x, box.y, box.width, box.height);
       ctx.setLineDash([]);
+      drawBadge(ctx, getElementDisplayName(parsedDoc, sel), box.x, box.y - 8);
 
       if (selection.length === 1) {
         const isEditablePath = elem.type === "path" && typeof elem.d === "string" && isEditablePathData(elem.d) && !elem.transform;
@@ -314,17 +376,7 @@ export default function CanvasPreview({
             }
           }
 
-          const hint = "Path edit: orange bends curves; white moves points; blue fine-tunes handles";
-          ctx.font = "12px sans-serif";
-          const textWidth = ctx.measureText(hint).width;
-          const hintX = box.x;
-          const hintY = Math.max(18, box.y - 14);
-          ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
-          ctx.fillRect(hintX - 6, hintY - 15, textWidth + 12, 20);
-          ctx.strokeStyle = "rgba(96, 165, 250, 0.8)";
-          ctx.strokeRect(hintX - 6, hintY - 15, textWidth + 12, 20);
-          ctx.fillStyle = "#DBEAFE";
-          ctx.fillText(hint, hintX, hintY);
+          drawBadge(ctx, "Path edit: orange bends curves; white moves points; blue fine-tunes handles", box.x, box.y - 30);
           ctx.restore();
         }
       }
@@ -335,15 +387,9 @@ export default function CanvasPreview({
       ctx.lineWidth = 1.5;
       ctx.setLineDash([]);
       ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.width, selectionBox.height);
-      ctx.font = "12px sans-serif";
-      const label = `${selection.length} selected`;
-      const labelY = Math.max(18, selectionBox.y - 8);
-      ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
-      ctx.fillRect(selectionBox.x - 4, labelY - 14, ctx.measureText(label).width + 8, 18);
-      ctx.fillStyle = "#DBEAFE";
-      ctx.fillText(label, selectionBox.x, labelY);
+      drawBadge(ctx, `${selection.length} selected`, selectionBox.x, selectionBox.y - 8);
     }
-  }, [selection, parsedDoc, showGrid, gridSize, penState, polyState, pathDrag, marquee]);
+  }, [selection, parsedDoc, showGrid, gridSize, penState, polyState, pathDrag, marquee, hoverState, activeTool, dragState]);
 
   // Draw rubber-band preview for drawing tools
   useEffect(() => {
@@ -404,6 +450,16 @@ export default function CanvasPreview({
     };
   }, [showGrid, gridSize]);
 
+  const getMenuPosition = useCallback((e: React.MouseEvent): { left: number; top: number } => {
+    const container = containerRef.current;
+    if (!container) return { left: e.clientX, top: e.clientY };
+    const rect = container.getBoundingClientRect();
+    return {
+      left: Math.min(Math.max(8, e.clientX - rect.left + 12), Math.max(8, rect.width - 240)),
+      top: Math.min(Math.max(8, e.clientY - rect.top + 12), Math.max(8, rect.height - 220)),
+    };
+  }, []);
+
   // Wheel handler for zoom/pan
   useEffect(() => {
     const container = containerRef.current;
@@ -425,6 +481,10 @@ export default function CanvasPreview({
   }, [zoom, panX, panY, dispatch]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    setHitMenu(null);
+    setPendingHitMenu(null);
+    setHoverState(null);
+
     // Middle mouse or space+click = start pan
     if (e.button === 1 || (spaceHeld && e.button === 0)) {
       setIsPanning(true);
@@ -495,22 +555,31 @@ export default function CanvasPreview({
       }
     }
 
-    // Hit test with click-cycling for overlapping elements
+    // Hit test; show an explicit chooser when overlapping objects are under the pointer.
     const allHits = hitTestAll(parsedDoc, pt.x, pt.y);
     let hit: ElementAddress | null = null;
-    if (allHits.length > 0) {
-      const cc = clickCycleRef.current;
-      const sameSpot = Math.abs(pt.x - cc.x) < 3 && Math.abs(pt.y - cc.y) < 3;
-      if (sameSpot && allHits.length > 1) {
-        cc.index = (cc.index + 1) % allHits.length;
+    if (allHits.length > 1) {
+      const modifier = e.shiftKey || e.metaKey || e.ctrlKey;
+      const selectedHit = allHits.find((candidate) => selection.some((selected) => addressEquals(selected, candidate)));
+      if (selectedHit && !modifier) {
+        setPendingHitMenu({
+          ...getMenuPosition(e),
+          hits: allHits,
+          append: false,
+        });
+        hit = selectedHit;
       } else {
-        cc.index = 0;
+        const menuPosition = getMenuPosition(e);
+        setHitMenu({
+          ...menuPosition,
+          hits: allHits,
+          append: modifier,
+        });
+        return;
       }
-      cc.x = pt.x;
-      cc.y = pt.y;
-      hit = allHits[cc.index];
-    } else {
-      clickCycleRef.current = { x: pt.x, y: pt.y, index: 0 };
+    }
+    if (allHits.length === 1) {
+      hit = allHits[0];
     }
 
     if (!hit) {
@@ -524,7 +593,7 @@ export default function CanvasPreview({
       return;
     }
 
-    if (e.shiftKey) {
+    if (e.shiftKey || e.metaKey || e.ctrlKey) {
       dispatch({ type: "SELECT", address: hit, append: true });
       return;
     }
@@ -543,7 +612,7 @@ export default function CanvasPreview({
         });
       }
     }
-  }, [parsedDoc, selection, activeTool, penState, dispatch, getCanvasCoords, spaceHeld, panX, panY, zoom]);
+  }, [parsedDoc, selection, activeTool, penState, dispatch, getCanvasCoords, spaceHeld, panX, panY, zoom, getMenuPosition]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     const pt = getCanvasCoords(e);
@@ -573,11 +642,13 @@ export default function CanvasPreview({
     if (!pt) return;
 
     if (marquee) {
+      setHoverState(null);
       setMarquee({ ...marquee, currentX: pt.x, currentY: pt.y });
       return;
     }
 
     if (pathDrag) {
+      setHoverState(null);
       const dx = pt.x - pathDrag.startX;
       const dy = pt.y - pathDrag.startY;
       const currentD = updatePathHandle(pathDrag.origD, pathDrag.handle, dx, dy);
@@ -587,6 +658,7 @@ export default function CanvasPreview({
 
     // Pen drag (bezier handle)
     if (penState?.draggingHandle) {
+      setHoverState(null);
       dispatch({ type: "UPDATE_PEN_DRAG", cp2: { x: Math.round(pt.x), y: Math.round(pt.y) } });
       return;
     }
@@ -605,15 +677,20 @@ export default function CanvasPreview({
 
     // Drawing
     if (drawState) {
+      setHoverState(null);
       dispatch({ type: "SET_DRAW", drawState: { ...drawState, currentX: pt.x, currentY: pt.y } });
       return;
     }
 
     // Dragging
     if (dragState && selection.length > 0 && parsedDoc?.layers) {
+      setHoverState(null);
       const selectionBox = getSelectionBoundingBox(parsedDoc, selection);
       const rawDx = pt.x - dragState.startX;
       const rawDy = pt.y - dragState.startY;
+      if (Math.abs(rawDx) > DRAG_THRESHOLD || Math.abs(rawDy) > DRAG_THRESHOLD) {
+        setPendingHitMenu(null);
+      }
       const snapped = dragState.type === "move" ? snapMoveDelta(rawDx, rawDy, selectionBox) : { dx: rawDx, dy: rawDy };
 
       const overlay = overlayRef.current;
@@ -671,6 +748,13 @@ export default function CanvasPreview({
         }
       }
       return;
+    }
+
+    if (activeTool === "select" && parsedDoc) {
+      const hits = hitTestAll(parsedDoc, pt.x, pt.y);
+      setHoverState(hits.length > 0 ? { x: pt.x, y: pt.y, hits } : null);
+    } else {
+      setHoverState(null);
     }
 
     // Cursor
@@ -779,6 +863,13 @@ export default function CanvasPreview({
       const selectionBox = getSelectionBoundingBox(parsedDoc, selection);
       const rawDx = pt.x - dragState.startX;
       const rawDy = pt.y - dragState.startY;
+      if (pendingHitMenu && Math.abs(rawDx) <= DRAG_THRESHOLD && Math.abs(rawDy) <= DRAG_THRESHOLD) {
+        setHitMenu(pendingHitMenu);
+        setPendingHitMenu(null);
+        dispatch({ type: "SET_DRAG", dragState: null });
+        return;
+      }
+      setPendingHitMenu(null);
       const snapped = dragState.type === "move" ? snapMoveDelta(rawDx, rawDy, selectionBox) : { dx: rawDx, dy: rawDy };
       if (Math.abs(rawDx) > 1 || Math.abs(rawDy) > 1) {
         if (dragState.type === "move") {
@@ -804,7 +895,14 @@ export default function CanvasPreview({
       }
       dispatch({ type: "SET_DRAG", dragState: null });
     }
-  }, [dragState, drawState, selection, parsedDoc, penState, dispatch, getCanvasCoords, isPanning, pathDrag, marquee, snapMoveDelta]);
+  }, [dragState, drawState, selection, parsedDoc, penState, dispatch, getCanvasCoords, isPanning, pathDrag, marquee, snapMoveDelta, pendingHitMenu]);
+
+  const selectFromHitMenu = useCallback((address: ElementAddress, append: boolean) => {
+    dispatch({ type: "SELECT", address, append });
+    setHitMenu(null);
+    setPendingHitMenu(null);
+    setHoverState(null);
+  }, [dispatch]);
 
   return (
     <div
@@ -831,8 +929,42 @@ export default function CanvasPreview({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onDoubleClick={handleDoubleClick}
+          onMouseLeave={() => setHoverState(null)}
         />
       </div>
+      {hitMenu && parsedDoc && (
+        <div
+          className="absolute z-20 w-56 rounded-lg border border-amber-400/60 bg-zinc-950/95 shadow-xl shadow-black/40 backdrop-blur-sm overflow-hidden"
+          style={{ left: hitMenu.left, top: hitMenu.top }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="px-2.5 py-2 border-b border-zinc-800">
+            <div className="text-xs font-semibold text-amber-200">Choose object</div>
+            <div className="text-[11px] text-zinc-500">
+              {hitMenu.hits.length} overlapping objects under cursor
+            </div>
+          </div>
+          <div className="max-h-56 overflow-auto py-1">
+            {hitMenu.hits.map((hit, index) => (
+              <button
+                key={`${hit.layerIndex}-${hit.elementIndex}`}
+                onClick={() => selectFromHitMenu(hit, hitMenu.append)}
+                className="w-full px-2.5 py-1.5 text-left hover:bg-zinc-800 flex items-center gap-2"
+              >
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${index === 0 ? "bg-amber-500/20 text-amber-200" : "bg-zinc-800 text-zinc-400"}`}>
+                  {index === 0 ? "top" : index + 1}
+                </span>
+                <span className="min-w-0 flex-1 text-xs text-zinc-200 truncate">
+                  {getElementDisplayName(parsedDoc, hit)}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="px-2.5 py-1.5 border-t border-zinc-800 text-[11px] text-zinc-500">
+            Shift/Cmd/Ctrl-click canvas to add/remove selection.
+          </div>
+        </div>
+      )}
       {/* Zoom indicator */}
       <div className="absolute bottom-2 left-2 text-xs text-zinc-500 bg-zinc-900/80 px-2 py-1 rounded">
         {Math.round(zoom * 100)}%
