@@ -2,6 +2,7 @@ import { parseColor, rgbaString } from "./colors";
 import { tracePath } from "./pathParser";
 import { computeLayout } from "./autoLayout";
 import { resolveInstance } from "./componentSystem";
+import { getBoundingBox, mergeBoundingBoxes, type BoundingBox } from "./hitTest";
 import type { NpngDocument, NpngElement, FillSpec, StrokeSpec, TransformSpec, FilterSpec, DefItem, ArrowEndType, ComponentDef, FillLayer, StrokeLayer } from "./types";
 
 const imageCache = new Map<string, HTMLImageElement>();
@@ -10,6 +11,8 @@ const canvasRenderVersions = new WeakMap<HTMLCanvasElement, number>();
 interface RenderOptions {
   pixelRatio?: number;
 }
+
+type ContainerElement = Extract<NpngElement, { type: "group" }> | Extract<NpngElement, { type: "frame" }>;
 
 function getRenderPixelRatio(options?: RenderOptions): number {
   const ratio = options?.pixelRatio ?? 1;
@@ -304,6 +307,180 @@ function getTextLineHeight(fontSize: number, lineHeight?: number): number {
   return fontSize * (lineHeight && lineHeight > 0 ? lineHeight : 1.2);
 }
 
+function expandBox(box: BoundingBox, padding: number): BoundingBox {
+  return {
+    x: box.x - padding,
+    y: box.y - padding,
+    width: box.width + padding * 2,
+    height: box.height + padding * 2,
+  };
+}
+
+function transformBounds(box: BoundingBox, transform?: TransformSpec): BoundingBox {
+  if (!transform) return box;
+  const transformPoint = (x: number, y: number) => {
+    let px = x;
+    let py = y;
+    const origin = transform.origin;
+    if (origin) {
+      px -= origin[0];
+      py -= origin[1];
+    }
+    if (transform.scale !== undefined) {
+      const sx = Array.isArray(transform.scale) ? transform.scale[0] : transform.scale;
+      const sy = Array.isArray(transform.scale) ? transform.scale[1] : transform.scale;
+      px *= sx;
+      py *= sy;
+    }
+    if (transform.rotate !== undefined) {
+      const angle = (transform.rotate * Math.PI) / 180;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const rx = px * cos - py * sin;
+      const ry = px * sin + py * cos;
+      px = rx;
+      py = ry;
+    }
+    if (transform.translate) {
+      px += transform.translate[0];
+      py += transform.translate[1];
+    }
+    if (origin) {
+      px += origin[0];
+      py += origin[1];
+    }
+    return { x: px, y: py };
+  };
+
+  const points = [
+    transformPoint(box.x, box.y),
+    transformPoint(box.x + box.width, box.y),
+    transformPoint(box.x + box.width, box.y + box.height),
+    transformPoint(box.x, box.y + box.height),
+  ];
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+function getMaxStrokePadding(elem: NpngElement): number {
+  const widths = [
+    elem.stroke?.width,
+    ...(elem.strokes ?? []).map((stroke) => stroke.width),
+  ].filter((width): width is number => typeof width === "number" && width > 0);
+  return widths.length > 0 ? Math.max(...widths) / 2 : 0;
+}
+
+function getMaxStrokeWidth(elem: NpngElement): number {
+  const widths = [
+    elem.stroke?.width,
+    ...(elem.strokes ?? []).map((stroke) => stroke.width),
+  ].filter((width): width is number => typeof width === "number" && width > 0);
+  return widths.length > 0 ? Math.max(...widths) : 1;
+}
+
+function getTransformScalePaddingMultiplier(transform?: TransformSpec): number {
+  if (!transform?.scale) return 1;
+  if (Array.isArray(transform.scale)) {
+    return Math.max(Math.abs(transform.scale[0]), Math.abs(transform.scale[1]));
+  }
+  return Math.abs(transform.scale);
+}
+
+function getArrowPadding(elem: NpngElement): number {
+  if (elem.type !== "line") return 0;
+  const hasArrowStart = elem.arrow_start && elem.arrow_start !== "none";
+  const hasArrowEnd = elem.arrow_end && elem.arrow_end !== "none";
+  if (!hasArrowStart && !hasArrowEnd) return 0;
+  return Math.max(8, getMaxStrokeWidth(elem) * 4);
+}
+
+function getImagePaintBounds(elem: Extract<NpngElement, { type: "image" }>): BoundingBox {
+  const cachedImage = elem.href ? imageCache.get(elem.href) : null;
+  const fallbackWidth = cachedImage?.complete && cachedImage.naturalWidth > 0 ? cachedImage.naturalWidth : 100;
+  const fallbackHeight = cachedImage?.complete && cachedImage.naturalHeight > 0 ? cachedImage.naturalHeight : 100;
+  return getBoundingBox({ ...elem, width: elem.width ?? fallbackWidth, height: elem.height ?? fallbackHeight });
+}
+
+function getElementPaintBounds(
+  elem: NpngElement,
+  defs?: Map<string, DefItem>,
+  components?: ComponentDef[]
+): BoundingBox | null {
+  if (elem.visible === false) return null;
+  if (elem.type === "group") {
+    const boxes = (elem.elements ?? [])
+      .flatMap((child) => {
+        const box = getElementPaintBounds(child, defs, components);
+        return box ? [box] : [];
+      });
+    const merged = mergeBoundingBoxes(boxes);
+    return merged ? transformBounds(merged, elem.transform) : null;
+  }
+  if (elem.type === "use") {
+    const def = elem.ref ? defs?.get(elem.ref) : null;
+    if (!def || !isNpngElement(def)) return null;
+    const refElem: NpngElement & Partial<Pick<typeof elem, "x" | "y" | "cx" | "cy" | "transform">> = { ...def };
+    if (elem.x !== undefined) refElem.x = elem.x;
+    if (elem.y !== undefined) refElem.y = elem.y;
+    if (elem.cx !== undefined) refElem.cx = elem.cx;
+    if (elem.cy !== undefined) refElem.cy = elem.cy;
+    if (elem.transform !== undefined) refElem.transform = elem.transform;
+    return getElementPaintBounds(refElem, defs, components);
+  }
+  if (elem.type === "component-instance") {
+    const resolved = components ? resolveInstance(elem, components) : null;
+    return resolved ? getElementPaintBounds(resolved, defs, components) : null;
+  }
+  if (elem.type === "image") {
+    return getImagePaintBounds(elem);
+  }
+
+  const bounds = getBoundingBox(elem);
+  const scaleMultiplier = getTransformScalePaddingMultiplier(elem.transform);
+  const paintPadding = (getMaxStrokePadding(elem) + getArrowPadding(elem)) * scaleMultiplier;
+  return paintPadding > 0 ? expandBox(bounds, paintPadding) : bounds;
+}
+
+function getContainerIsolationBounds(
+  elem: NpngElement,
+  defs?: Map<string, DefItem>,
+  components?: ComponentDef[]
+): BoundingBox | null {
+  if (elem.type === "group") {
+    const boxes = (elem.elements ?? [])
+      .filter((child) => child.visible !== false)
+      .flatMap((child) => {
+        const box = getElementPaintBounds(child, defs, components);
+        return box ? [box] : [];
+      });
+    return mergeBoundingBoxes(boxes);
+  }
+  if (elem.type === "frame") {
+    const bounds = {
+      x: elem.x ?? 0,
+      y: elem.y ?? 0,
+      width: elem.width ?? 0,
+      height: elem.height ?? 0,
+    };
+    const strokePadding = getMaxStrokePadding(elem);
+    return strokePadding > 0 ? expandBox(bounds, strokePadding) : bounds;
+  }
+  return null;
+}
+
+function isContainerElement(elem: NpngElement): elem is ContainerElement {
+  return elem.type === "group" || elem.type === "frame";
+}
+
+function shouldIsolateContainer(elem: ContainerElement): boolean {
+  return elem.opacity !== undefined && elem.opacity < 1;
+}
+
 function wrapTextLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const paragraphs = text.split("\n");
   const lines: string[] = [];
@@ -359,20 +536,93 @@ function wrapTextLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: nu
   return lines.length > 0 ? lines : [""];
 }
 
+function renderGroupContents(
+  ctx: CanvasRenderingContext2D,
+  elem: Extract<NpngElement, { type: "group" }>,
+  defs?: Map<string, DefItem>,
+  components?: ComponentDef[],
+  onAsyncResourceLoaded?: () => void,
+  pixelRatio = 1
+): void {
+  for (const child of elem.elements ?? []) {
+    renderElement(ctx, child, defs, components, onAsyncResourceLoaded, pixelRatio);
+  }
+}
+
+function renderFrameContents(
+  ctx: CanvasRenderingContext2D,
+  elem: Extract<NpngElement, { type: "frame" }>,
+  defs?: Map<string, DefItem>,
+  components?: ComponentDef[],
+  onAsyncResourceLoaded?: () => void,
+  pixelRatio = 1
+): void {
+  if (elem.auto_layout && elem.children) {
+    computeLayout(elem);
+  }
+
+  const x = elem.x ?? 0, y = elem.y ?? 0, w = elem.width ?? 0, h = elem.height ?? 0;
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  if (applyFill(ctx, elem.fill ?? null)) ctx.fill();
+  if (elem.stroke) applyStroke(ctx, elem.stroke);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  for (const child of elem.children ?? []) {
+    renderElement(ctx, child, defs, components, onAsyncResourceLoaded, pixelRatio);
+  }
+  ctx.restore();
+}
+
+function renderIsolatedContainer(
+  ctx: CanvasRenderingContext2D,
+  elem: ContainerElement,
+  defs?: Map<string, DefItem>,
+  components?: ComponentDef[],
+  onAsyncResourceLoaded?: () => void,
+  pixelRatio = 1
+): void {
+  const bounds = getContainerIsolationBounds(elem, defs, components);
+  if (!bounds || bounds.width <= 0 || bounds.height <= 0) return;
+  const paddedBounds = expandBox(bounds, 2);
+  const offscreen = document.createElement("canvas");
+  offscreen.width = Math.max(1, Math.ceil(paddedBounds.width * pixelRatio));
+  offscreen.height = Math.max(1, Math.ceil(paddedBounds.height * pixelRatio));
+  const offscreenCtx = offscreen.getContext("2d");
+  if (!offscreenCtx) return;
+
+  configureCanvasContext(offscreenCtx);
+  offscreenCtx.scale(pixelRatio, pixelRatio);
+  offscreenCtx.translate(-paddedBounds.x, -paddedBounds.y);
+
+  if (elem.type === "group") {
+    renderGroupContents(offscreenCtx, elem, defs, components, onAsyncResourceLoaded, pixelRatio);
+  } else {
+    renderFrameContents(offscreenCtx, elem, defs, components, onAsyncResourceLoaded, pixelRatio);
+  }
+
+  ctx.save();
+  ctx.globalAlpha *= elem.opacity ?? 1;
+  ctx.drawImage(offscreen, paddedBounds.x, paddedBounds.y, paddedBounds.width, paddedBounds.height);
+  ctx.restore();
+}
+
 function renderElement(
   ctx: CanvasRenderingContext2D,
   elem: NpngElement,
   defs?: Map<string, DefItem>,
   components?: ComponentDef[],
-  onAsyncResourceLoaded?: () => void
+  onAsyncResourceLoaded?: () => void,
+  pixelRatio = 1
 ): void {
   if (elem.visible === false) return;
   const transform = elem.transform as TransformSpec | undefined;
   const elemOpacity = elem.opacity ?? 1.0;
 
   ctx.save();
-
-  if (elemOpacity < 1.0) ctx.globalAlpha *= elemOpacity;
 
   if (transform) {
     const origin = transform.origin;
@@ -384,6 +634,14 @@ function renderElement(
       applyTransform(ctx, transform);
     }
   }
+
+  if (isContainerElement(elem) && shouldIsolateContainer(elem)) {
+    renderIsolatedContainer(ctx, elem, defs, components, onAsyncResourceLoaded, pixelRatio);
+    ctx.restore();
+    return;
+  }
+
+  if (elemOpacity < 1.0) ctx.globalAlpha *= elemOpacity;
 
   if (elem.type === "rect") {
     const e = elem;
@@ -553,9 +811,7 @@ function renderElement(
       () => { ctx.beginPath(); tracePath(ctx, d); ctx.stroke(); }
     );
   } else if (elem.type === "group") {
-    for (const child of elem.elements ?? []) {
-      renderElement(ctx, child, defs, components, onAsyncResourceLoaded);
-    }
+    renderGroupContents(ctx, elem, defs, components, onAsyncResourceLoaded, pixelRatio);
   } else if (elem.type === "use") {
     const e = elem;
     const refId = e.ref;
@@ -571,7 +827,7 @@ function renderElement(
       if (e.cx !== undefined) refElem.cx = e.cx;
       if (e.cy !== undefined) refElem.cy = e.cy;
       if (e.transform !== undefined) refElem.transform = e.transform;
-      renderElement(ctx, refElem, defs, components, onAsyncResourceLoaded);
+      renderElement(ctx, refElem, defs, components, onAsyncResourceLoaded, pixelRatio);
     }
   } else if (elem.type === "image") {
     const e = elem;
@@ -583,32 +839,13 @@ function renderElement(
       }
     }
   } else if (elem.type === "frame") {
-    const e = elem;
-    // Run auto layout before rendering
-    if (e.auto_layout && e.children) {
-      computeLayout(e);
-    }
-    // Draw frame background
-    const x = e.x ?? 0, y = e.y ?? 0, w = e.width ?? 0, h = e.height ?? 0;
-    ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    if (applyFill(ctx, e.fill ?? null)) ctx.fill();
-    if (e.stroke) applyStroke(ctx, e.stroke);
-    // Clip children to frame
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    ctx.clip();
-    for (const child of e.children ?? []) {
-      renderElement(ctx, child, defs, components, onAsyncResourceLoaded);
-    }
-    ctx.restore();
+    renderFrameContents(ctx, elem, defs, components, onAsyncResourceLoaded, pixelRatio);
   } else if (elem.type === "component-instance") {
     const e = elem;
     if (components) {
       const resolved = resolveInstance(e, components);
       if (resolved) {
-        renderElement(ctx, resolved, defs, components, onAsyncResourceLoaded);
+        renderElement(ctx, resolved, defs, components, onAsyncResourceLoaded, pixelRatio);
       }
     }
   }
@@ -684,7 +921,7 @@ export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement, option
     }
 
     for (const elem of layer.elements ?? []) {
-      renderElement(lctx, elem, defs, components, scheduleRedraw);
+      renderElement(lctx, elem, defs, components, scheduleRedraw, pixelRatio);
     }
 
     // Apply filters
@@ -702,7 +939,7 @@ export function renderNpng(data: NpngDocument, canvas: HTMLCanvasElement, option
       configureCanvasContext(mctx);
       mctx.scale(pixelRatio, pixelRatio);
       for (const melem of maskDef.elements ?? []) {
-        renderElement(mctx, melem, defs, components, scheduleRedraw);
+        renderElement(mctx, melem, defs, components, scheduleRedraw, pixelRatio);
       }
       const layerData = lctx.getImageData(0, 0, physicalWidth, physicalHeight);
       const maskData = mctx.getImageData(0, 0, physicalWidth, physicalHeight);
