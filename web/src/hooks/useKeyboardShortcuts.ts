@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { EditorAction, ElementAddress } from "../lib/editorState";
 import type { NpngDocument } from "../lib/types";
+import { applyMove, getOrigProps } from "../lib/canvasInteraction";
 
 export function useKeyboardShortcuts(
   dispatch: React.Dispatch<EditorAction>,
@@ -12,6 +13,7 @@ export function useKeyboardShortcuts(
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
       const target = e.target;
       const isEditableTarget =
         target instanceof HTMLInputElement ||
@@ -22,12 +24,20 @@ export function useKeyboardShortcuts(
 
       if (e.defaultPrevented || isEditableTarget) return;
 
-      if (meta && e.key === "z" && !e.shiftKey) {
+      if (meta && key === "z" && !e.shiftKey) {
         e.preventDefault();
         dispatch({ type: "UNDO" });
-      } else if (meta && e.key === "z" && e.shiftKey) {
+      } else if (meta && key === "z" && e.shiftKey) {
         e.preventDefault();
         dispatch({ type: "REDO" });
+      } else if (meta && key === "a") {
+        e.preventDefault();
+        dispatch({ type: "SELECT_ALL" });
+      } else if (meta && key === "d") {
+        if (selection.length > 0) {
+          e.preventDefault();
+          dispatch({ type: "DUPLICATE_SELECTION" });
+        }
       } else if (meta && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
         dispatch({ type: "SET_ZOOM", zoom: zoom * 1.2 });
@@ -62,22 +72,17 @@ export function useKeyboardShortcuts(
         else if (e.key === "ArrowDown") dy = delta;
         if (dx !== 0 || dy !== 0) {
           e.preventDefault();
-          for (const sel of selection) {
-            const layer = parsedDoc.layers[sel.layerIndex];
+          const layers = parsedDoc.layers;
+          if (!layers) return;
+          const updates = selection.flatMap((sel) => {
+            const layer = layers[sel.layerIndex];
             const elem = layer?.elements?.[sel.elementIndex];
-            if (elem) {
-              let props: Record<string, unknown> = {};
-              if (elem.type === "rect" || elem.type === "text") {
-                props = { x: (elem.x ?? 0) + dx, y: (elem.y ?? 0) + dy };
-              } else if (elem.type === "ellipse") {
-                props = { cx: (elem.cx ?? 0) + dx, cy: (elem.cy ?? 0) + dy };
-              } else if (elem.type === "line") {
-                props = { x1: (elem.x1 ?? 0) + dx, y1: (elem.y1 ?? 0) + dy, x2: (elem.x2 ?? 0) + dx, y2: (elem.y2 ?? 0) + dy };
-              }
-              if (Object.keys(props).length > 0) {
-                dispatch({ type: "UPDATE_ELEMENT", address: sel, props });
-              }
-            }
+            if (!elem) return [];
+            const props = applyMove(elem, dx, dy, getOrigProps(elem));
+            return Object.keys(props).length > 0 ? [{ address: sel, props }] : [];
+          });
+          if (updates.length > 0) {
+            dispatch({ type: "UPDATE_ELEMENTS", updates });
           }
         }
       }

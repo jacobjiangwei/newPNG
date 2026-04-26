@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import yaml from "js-yaml";
 import { renderNpng } from "../lib/renderer";
-import { hitTestAll, getBoundingBox } from "../lib/hitTest";
+import { hitTestAll, hitTestBox, getBoundingBox, getSelectionBoundingBox, mergeBoundingBoxes, type BoundingBox } from "../lib/hitTest";
 import { getHandles, getHandleAtPoint, cursorForHandle, applyMove, applyResize, getOrigProps } from "../lib/canvasInteraction";
 import { generateShapeForTool } from "../lib/presetShapes";
 import { getPathControlLines, getPathHandleAtPoint, getPathHandles, isEditablePathData, updatePathHandle } from "../lib/pathEditing";
@@ -37,6 +37,29 @@ interface PathDragState {
   currentD: string;
 }
 
+interface MarqueeState {
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  append: boolean;
+}
+
+const DRAG_THRESHOLD = 3;
+
+function normalizeBox(startX: number, startY: number, currentX: number, currentY: number): BoundingBox {
+  return {
+    x: Math.min(startX, currentX),
+    y: Math.min(startY, currentY),
+    width: Math.abs(currentX - startX),
+    height: Math.abs(currentY - startY),
+  };
+}
+
+function addressEquals(a: ElementAddress, b: ElementAddress): boolean {
+  return a.layerIndex === b.layerIndex && a.elementIndex === b.elementIndex;
+}
+
 export default function CanvasPreview({
   yamlText, parsedDoc, selection, activeTool, dragState, drawState, penState, polyState,
   zoom, panX, panY, showGrid, gridSize, dispatch,
@@ -47,6 +70,7 @@ export default function CanvasPreview({
   const [isPanning, setIsPanning] = useState(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [pathDrag, setPathDrag] = useState<PathDragState | null>(null);
+  const [marquee, setMarquee] = useState<MarqueeState | null>(null);
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const clickCycleRef = useRef<{ x: number; y: number; index: number }>({ x: -1, y: -1, index: 0 });
 
@@ -199,14 +223,26 @@ export default function CanvasPreview({
       }
     }
 
+    if (marquee) {
+      const box = normalizeBox(marquee.startX, marquee.startY, marquee.currentX, marquee.currentY);
+      ctx.fillStyle = "rgba(59, 130, 246, 0.14)";
+      ctx.strokeStyle = "#60A5FA";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.fillRect(box.x, box.y, box.width, box.height);
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      ctx.setLineDash([]);
+    }
+
     if (!selection.length || !parsedDoc?.layers) return;
+    const selectionBox = getSelectionBoundingBox(parsedDoc, selection);
     for (const sel of selection) {
       const layer = parsedDoc.layers[sel.layerIndex];
       if (!layer?.elements?.[sel.elementIndex]) continue;
       const elem = layer.elements[sel.elementIndex];
       const box = getBoundingBox(elem);
 
-      ctx.strokeStyle = "#3B82F6";
+      ctx.strokeStyle = selection.length > 1 ? "rgba(96, 165, 250, 0.45)" : "#3B82F6";
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(box.x, box.y, box.width, box.height);
@@ -293,7 +329,21 @@ export default function CanvasPreview({
         }
       }
     }
-  }, [selection, parsedDoc, showGrid, gridSize, penState, polyState, pathDrag]);
+
+    if (selection.length > 1 && selectionBox) {
+      ctx.strokeStyle = "#60A5FA";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([]);
+      ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.width, selectionBox.height);
+      ctx.font = "12px sans-serif";
+      const label = `${selection.length} selected`;
+      const labelY = Math.max(18, selectionBox.y - 8);
+      ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+      ctx.fillRect(selectionBox.x - 4, labelY - 14, ctx.measureText(label).width + 8, 18);
+      ctx.fillStyle = "#DBEAFE";
+      ctx.fillText(label, selectionBox.x, labelY);
+    }
+  }, [selection, parsedDoc, showGrid, gridSize, penState, polyState, pathDrag, marquee]);
 
   // Draw rubber-band preview for drawing tools
   useEffect(() => {
@@ -345,6 +395,14 @@ export default function CanvasPreview({
     const scaleY = canvas.height / rect.height;
     return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
   }, []);
+
+  const snapMoveDelta = useCallback((dx: number, dy: number, referenceBox: BoundingBox | null) => {
+    if (!showGrid || gridSize <= 0 || !referenceBox) return { dx, dy };
+    return {
+      dx: Math.round((referenceBox.x + dx) / gridSize) * gridSize - referenceBox.x,
+      dy: Math.round((referenceBox.y + dy) / gridSize) * gridSize - referenceBox.y,
+    };
+  }, [showGrid, gridSize]);
 
   // Wheel handler for zoom/pan
   useEffect(() => {
@@ -455,13 +513,28 @@ export default function CanvasPreview({
       clickCycleRef.current = { x: pt.x, y: pt.y, index: 0 };
     }
 
+    if (!hit) {
+      setMarquee({
+        startX: pt.x,
+        startY: pt.y,
+        currentX: pt.x,
+        currentY: pt.y,
+        append: e.shiftKey,
+      });
+      return;
+    }
+
     if (e.shiftKey) {
       dispatch({ type: "SELECT", address: hit, append: true });
-    } else {
+      return;
+    }
+
+    const hitSelected = selection.some((selected) => addressEquals(selected, hit!));
+    if (!hitSelected) {
       dispatch({ type: "SELECT", address: hit });
     }
 
-    if (hit && parsedDoc.layers) {
+    if (parsedDoc.layers) {
       const elem = parsedDoc.layers[hit.layerIndex]?.elements?.[hit.elementIndex];
       if (elem) {
         dispatch({
@@ -499,6 +572,11 @@ export default function CanvasPreview({
     const pt = getCanvasCoords(e);
     if (!pt) return;
 
+    if (marquee) {
+      setMarquee({ ...marquee, currentX: pt.x, currentY: pt.y });
+      return;
+    }
+
     if (pathDrag) {
       const dx = pt.x - pathDrag.startX;
       const dy = pt.y - pathDrag.startY;
@@ -533,11 +611,10 @@ export default function CanvasPreview({
 
     // Dragging
     if (dragState && selection.length > 0 && parsedDoc?.layers) {
-      const sel = selection[0];
-      const dx = pt.x - dragState.startX;
-      const dy = pt.y - dragState.startY;
-      const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
-      if (!elem) return;
+      const selectionBox = getSelectionBoundingBox(parsedDoc, selection);
+      const rawDx = pt.x - dragState.startX;
+      const rawDy = pt.y - dragState.startY;
+      const snapped = dragState.type === "move" ? snapMoveDelta(rawDx, rawDy, selectionBox) : { dx: rawDx, dy: rawDy };
 
       const overlay = overlayRef.current;
       const main = canvasRef.current;
@@ -547,29 +624,50 @@ export default function CanvasPreview({
       const ctx = overlay.getContext("2d")!;
       ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-      let tempBox;
+      let tempBox: BoundingBox | null = null;
+      const previewBoxes: BoundingBox[] = [];
       if (dragState.type === "move") {
-        const moved = applyMove(elem, dx, dy, dragState.origProps);
-        const tempElem = { ...elem, ...moved } as NpngElement;
-        tempBox = getBoundingBox(tempElem);
+        for (const sel of selection) {
+          const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+          if (!elem) continue;
+          const moved = applyMove(elem, snapped.dx, snapped.dy, getOrigProps(elem));
+          const tempElem = { ...elem, ...moved } as NpngElement;
+          previewBoxes.push(getBoundingBox(tempElem));
+        }
+        tempBox = mergeBoundingBoxes(previewBoxes);
       } else if (dragState.handle) {
-        const resized = applyResize(elem, dragState.handle, dx, dy, dragState.origProps);
+        const sel = selection[0];
+        const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+        if (!elem) return;
+        const resized = applyResize(elem, dragState.handle, rawDx, rawDy, dragState.origProps);
         const tempElem = { ...elem, ...resized } as NpngElement;
         tempBox = getBoundingBox(tempElem);
+        previewBoxes.push(tempBox);
+      }
+
+      if (previewBoxes.length > 1) {
+        ctx.strokeStyle = "rgba(96, 165, 250, 0.45)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        for (const box of previewBoxes) {
+          ctx.strokeRect(box.x, box.y, box.width, box.height);
+        }
       }
 
       if (tempBox) {
         ctx.strokeStyle = "#3B82F6";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = previewBoxes.length > 1 ? 1.5 : 1;
+        ctx.setLineDash(previewBoxes.length > 1 ? [] : [4, 4]);
         ctx.strokeRect(tempBox.x, tempBox.y, tempBox.width, tempBox.height);
         ctx.setLineDash([]);
-        for (const h of getHandles(tempBox)) {
-          ctx.fillStyle = "#fff";
-          ctx.strokeStyle = "#3B82F6";
-          ctx.lineWidth = 1.5;
-          ctx.fillRect(h.x, h.y, h.size, h.size);
-          ctx.strokeRect(h.x, h.y, h.size, h.size);
+        if (previewBoxes.length === 1) {
+          for (const h of getHandles(tempBox)) {
+            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = "#3B82F6";
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(h.x, h.y, h.size, h.size);
+            ctx.strokeRect(h.x, h.y, h.size, h.size);
+          }
         }
       }
       return;
@@ -605,7 +703,7 @@ export default function CanvasPreview({
       const canvas = overlayRef.current ?? canvasRef.current;
       if (canvas) canvas.style.cursor = "crosshair";
     }
-  }, [dragState, drawState, selection, parsedDoc, activeTool, penState, polyState, dispatch, getCanvasCoords, isPanning, spaceHeld, pathDrag, zoom]);
+  }, [dragState, drawState, selection, parsedDoc, activeTool, penState, polyState, dispatch, getCanvasCoords, isPanning, spaceHeld, pathDrag, zoom, marquee, snapMoveDelta]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     if (isPanning) {
@@ -630,6 +728,18 @@ export default function CanvasPreview({
 
     const pt = getCanvasCoords(e);
     if (!pt) return;
+
+    if (marquee) {
+      const box = normalizeBox(marquee.startX, marquee.startY, pt.x, pt.y);
+      if (box.width > DRAG_THRESHOLD || box.height > DRAG_THRESHOLD) {
+        const addresses = parsedDoc ? hitTestBox(parsedDoc, box) : [];
+        dispatch({ type: "SELECT_MANY", addresses, append: marquee.append });
+      } else if (!marquee.append) {
+        dispatch({ type: "SELECT", address: null });
+      }
+      setMarquee(null);
+      return;
+    }
 
     // Finish drawing
     if (drawState) {
@@ -666,25 +776,35 @@ export default function CanvasPreview({
 
     // Finish drag
     if (dragState && selection.length > 0 && parsedDoc?.layers) {
-      const dx = pt.x - dragState.startX;
-      const dy = pt.y - dragState.startY;
-      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-        for (const sel of selection) {
+      const selectionBox = getSelectionBoundingBox(parsedDoc, selection);
+      const rawDx = pt.x - dragState.startX;
+      const rawDy = pt.y - dragState.startY;
+      const snapped = dragState.type === "move" ? snapMoveDelta(rawDx, rawDy, selectionBox) : { dx: rawDx, dy: rawDy };
+      if (Math.abs(rawDx) > 1 || Math.abs(rawDy) > 1) {
+        if (dragState.type === "move") {
+          const updates = selection.flatMap((sel) => {
+            const elem = parsedDoc.layers?.[sel.layerIndex]?.elements?.[sel.elementIndex];
+            if (!elem) return [];
+            const props = applyMove(elem, snapped.dx, snapped.dy, getOrigProps(elem));
+            return Object.keys(props).length > 0 ? [{ address: sel, props }] : [];
+          });
+          if (updates.length > 0) {
+            dispatch({ type: "UPDATE_ELEMENTS", updates });
+          }
+        } else {
+          const sel = selection[0];
           const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
           if (elem) {
-            let props: Record<string, unknown>;
-            if (dragState.type === "move") {
-              props = applyMove(elem, dx, dy, getOrigProps(elem));
-            } else {
-              props = applyResize(elem, dragState.handle!, dx, dy, dragState.origProps);
+            const props = applyResize(elem, dragState.handle!, rawDx, rawDy, dragState.origProps);
+            if (Object.keys(props).length > 0) {
+              dispatch({ type: "UPDATE_ELEMENT", address: sel, props });
             }
-            dispatch({ type: "UPDATE_ELEMENT", address: sel, props });
           }
         }
       }
       dispatch({ type: "SET_DRAG", dragState: null });
     }
-  }, [dragState, drawState, selection, parsedDoc, penState, dispatch, getCanvasCoords, isPanning, pathDrag]);
+  }, [dragState, drawState, selection, parsedDoc, penState, dispatch, getCanvasCoords, isPanning, pathDrag, marquee, snapMoveDelta]);
 
   return (
     <div

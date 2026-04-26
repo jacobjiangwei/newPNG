@@ -1,4 +1,5 @@
 import yaml from "js-yaml";
+import { applyMove, getOrigProps } from "./canvasInteraction";
 import type { NpngDocument, NpngElement } from "./types";
 
 export type Tool = "select" | "rect" | "ellipse" | "line" | "text"
@@ -17,6 +18,11 @@ export interface DragState {
   startX: number;
   startY: number;
   origProps: Record<string, number>;
+}
+
+export interface ElementUpdate {
+  address: ElementAddress;
+  props: Record<string, unknown>;
 }
 
 export interface DrawState {
@@ -68,9 +74,13 @@ export interface EditorState {
 export type EditorAction =
   | { type: "SET_YAML"; yaml: string; pushHistory?: boolean }
   | { type: "SELECT"; address: ElementAddress | null; append?: boolean }
+  | { type: "SELECT_MANY"; addresses: ElementAddress[]; append?: boolean }
+  | { type: "SELECT_ALL" }
   | { type: "SET_TOOL"; tool: Tool }
   | { type: "UPDATE_ELEMENT"; address: ElementAddress; props: Record<string, unknown> }
+  | { type: "UPDATE_ELEMENTS"; updates: ElementUpdate[] }
   | { type: "ADD_ELEMENT"; layerIndex: number; element: NpngElement }
+  | { type: "DUPLICATE_SELECTION"; offset?: number }
   | { type: "DELETE_ELEMENT"; address: ElementAddress }
   | { type: "SET_DRAG"; dragState: DragState | null }
   | { type: "SET_DRAW"; drawState: DrawState | null }
@@ -103,6 +113,7 @@ export type EditorAction =
   | { type: "SET_LAYER_CLIP"; layerIndex: number; clipPath: string | null };
 
 const MAX_HISTORY = 100;
+const DEFAULT_DUPLICATE_OFFSET = 16;
 
 function tryParse(text: string): NpngDocument | null {
   try {
@@ -121,6 +132,26 @@ function pushHistory(state: EditorState, newYaml: string): Pick<EditorState, "hi
   truncated.push(newYaml);
   if (truncated.length > MAX_HISTORY) truncated.shift();
   return { history: truncated, historyIndex: truncated.length - 1 };
+}
+
+function sameAddress(a: ElementAddress, b: ElementAddress): boolean {
+  return a.layerIndex === b.layerIndex && a.elementIndex === b.elementIndex;
+}
+
+function uniqueAddresses(addresses: ElementAddress[]): ElementAddress[] {
+  const unique: ElementAddress[] = [];
+  for (const address of addresses) {
+    if (!unique.some((existing) => sameAddress(existing, address))) unique.push(address);
+  }
+  return unique;
+}
+
+function applyElementProps(element: NpngElement, props: Record<string, unknown>): void {
+  const editable = element as NpngElement & Record<string, unknown>;
+  for (const [k, v] of Object.entries(props)) {
+    if (v === undefined || v === null) delete editable[k];
+    else editable[k] = v;
+  }
 }
 
 function penPointsToPathD(points: PenPoint[], closed: boolean): string {
@@ -183,13 +214,33 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "SELECT": {
       if (!action.address) return { ...state, selection: [] };
       if (action.append) {
-        const exists = state.selection.findIndex(s => s.layerIndex === action.address!.layerIndex && s.elementIndex === action.address!.elementIndex);
+        const exists = state.selection.findIndex(s => sameAddress(s, action.address!));
         if (exists >= 0) {
           return { ...state, selection: state.selection.filter((_, i) => i !== exists) };
         }
         return { ...state, selection: [...state.selection, action.address] };
       }
       return { ...state, selection: [action.address] };
+    }
+
+    case "SELECT_MANY": {
+      const nextSelection = action.append
+        ? uniqueAddresses([...state.selection, ...action.addresses])
+        : uniqueAddresses(action.addresses);
+      return { ...state, selection: nextSelection };
+    }
+
+    case "SELECT_ALL": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers) return state;
+      const addresses: ElementAddress[] = [];
+      doc.layers.forEach((layer, layerIndex) => {
+        if (layer.visible === false) return;
+        (layer.elements ?? []).forEach((_, elementIndex) => {
+          addresses.push({ layerIndex, elementIndex });
+        });
+      });
+      return { ...state, selection: addresses };
     }
 
     case "SET_TOOL":
@@ -202,11 +253,24 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const layer = doc.layers[layerIndex];
       if (!layer?.elements?.[elementIndex]) return state;
       const newDoc = structuredClone(doc);
-      const el = newDoc.layers![layerIndex].elements![elementIndex] as NpngElement & Record<string, unknown>;
-      for (const [k, v] of Object.entries(action.props)) {
-        if (v === undefined || v === null) delete el[k];
-        else el[k] = v;
+      const el = newDoc.layers![layerIndex].elements![elementIndex];
+      applyElementProps(el, action.props);
+      const newYaml = docToYaml(newDoc);
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, ...pushHistory(state, newYaml) };
+    }
+
+    case "UPDATE_ELEMENTS": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers || action.updates.length === 0) return state;
+      const newDoc = structuredClone(doc);
+      let changed = false;
+      for (const update of action.updates) {
+        const element = newDoc.layers?.[update.address.layerIndex]?.elements?.[update.address.elementIndex];
+        if (!element) continue;
+        applyElementProps(element, update.props);
+        changed = true;
       }
+      if (!changed) return state;
       const newYaml = docToYaml(newDoc);
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, ...pushHistory(state, newYaml) };
     }
@@ -224,6 +288,30 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       const newYaml = docToYaml(newDoc);
       const newAddr: ElementAddress = { layerIndex: li, elementIndex: newDoc.layers[li].elements!.length - 1 };
       return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: [newAddr], activeTool: "select", ...pushHistory(state, newYaml) };
+    }
+
+    case "DUPLICATE_SELECTION": {
+      const doc = state.parsedDoc;
+      if (!doc?.layers || state.selection.length === 0) return state;
+      const newDoc = structuredClone(doc);
+      const offset = action.offset ?? DEFAULT_DUPLICATE_OFFSET;
+      const newSelection: ElementAddress[] = [];
+      const orderedSelection = [...state.selection].sort((a, b) => a.layerIndex - b.layerIndex || a.elementIndex - b.elementIndex);
+
+      for (const address of orderedSelection) {
+        const elements = newDoc.layers?.[address.layerIndex]?.elements;
+        const original = doc.layers[address.layerIndex]?.elements?.[address.elementIndex];
+        if (!elements || !original) continue;
+
+        const duplicate = structuredClone(original);
+        applyElementProps(duplicate, applyMove(duplicate, offset, offset, getOrigProps(duplicate)));
+        elements.push(duplicate);
+        newSelection.push({ layerIndex: address.layerIndex, elementIndex: elements.length - 1 });
+      }
+
+      if (newSelection.length === 0) return state;
+      const newYaml = docToYaml(newDoc);
+      return { ...state, yamlText: newYaml, parsedDoc: newDoc, selection: newSelection, activeTool: "select", ...pushHistory(state, newYaml) };
     }
 
     case "DELETE_ELEMENT": {

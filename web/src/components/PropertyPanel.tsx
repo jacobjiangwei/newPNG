@@ -22,6 +22,7 @@ import type { ElementAddress, EditorAction } from "../lib/editorState";
 interface PropertyPanelProps {
   element: NpngElement | null;
   address: ElementAddress | null;
+  selectionCount?: number;
   doc: NpngDocument | null;
   dispatch: React.Dispatch<EditorAction>;
 }
@@ -118,11 +119,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function PropertyPanel({ element, address, doc, dispatch }: PropertyPanelProps) {
+export default function PropertyPanel({ element, address, selectionCount = 0, doc, dispatch }: PropertyPanelProps) {
   const [editingSpans, setEditingSpans] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!element || !address) {
+    if (selectionCount > 1) {
+      return (
+        <div className="p-3 text-xs text-zinc-400 leading-relaxed">
+          <div className="font-medium text-zinc-300 mb-1">{selectionCount} elements selected</div>
+          Drag on canvas to move them together. Cmd/Ctrl+D duplicates, arrow keys nudge, Cmd/Ctrl+A selects all.
+        </div>
+      );
+    }
     return <div className="p-3 text-xs text-zinc-500">No selection</div>;
   }
 

@@ -250,6 +250,30 @@ export function pointInBox(px: number, py: number, box: BoundingBox, padding = 4
          py >= box.y - padding && py <= box.y + box.height + padding;
 }
 
+export function boxesIntersect(a: BoundingBox, b: BoundingBox): boolean {
+  return a.x <= b.x + b.width &&
+    a.x + a.width >= b.x &&
+    a.y <= b.y + b.height &&
+    a.y + a.height >= b.y;
+}
+
+export function mergeBoundingBoxes(boxes: BoundingBox[]): BoundingBox | null {
+  if (boxes.length === 0) return null;
+  const minX = Math.min(...boxes.map((box) => box.x));
+  const minY = Math.min(...boxes.map((box) => box.y));
+  const maxX = Math.max(...boxes.map((box) => box.x + box.width));
+  const maxY = Math.max(...boxes.map((box) => box.y + box.height));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+export function getSelectionBoundingBox(doc: NpngDocument, selection: ElementAddress[]): BoundingBox | null {
+  const boxes = selection.flatMap((address) => {
+    const element = doc.layers?.[address.layerIndex]?.elements?.[address.elementIndex];
+    return element ? [getBoundingBox(element)] : [];
+  });
+  return mergeBoundingBoxes(boxes);
+}
+
 export function hitTest(doc: NpngDocument, px: number, py: number): ElementAddress | null {
   const all = hitTestAll(doc, px, py);
   return all.length > 0 ? all[0] : null;
@@ -265,6 +289,22 @@ export function hitTestAll(doc: NpngDocument, px: number, py: number): ElementAd
     for (let ei = elements.length - 1; ei >= 0; ei--) {
       const box = getBoundingBox(elements[ei]);
       if (pointInBox(px, py, box)) {
+        results.push({ layerIndex: li, elementIndex: ei });
+      }
+    }
+  }
+  return results;
+}
+
+export function hitTestBox(doc: NpngDocument, box: BoundingBox): ElementAddress[] {
+  if (!doc.layers) return [];
+  const results: ElementAddress[] = [];
+  for (let li = 0; li < doc.layers.length; li++) {
+    const layer = doc.layers[li];
+    if (layer.visible === false) continue;
+    const elements = layer.elements ?? [];
+    for (let ei = 0; ei < elements.length; ei++) {
+      if (boxesIntersect(getBoundingBox(elements[ei]), box)) {
         results.push({ layerIndex: li, elementIndex: ei });
       }
     }

@@ -996,7 +996,13 @@ export default function Home() {
             Properties
           </div>
           <div className="flex-1 overflow-auto bg-[#1e1e1e]">
-            <PropertyPanel element={selectedElement} address={firstSel} doc={state.parsedDoc} dispatch={dispatch} />
+            <PropertyPanel
+              element={selectedElement}
+              address={firstSel}
+              selectionCount={state.selection.length}
+              doc={state.parsedDoc}
+              dispatch={dispatch}
+            />
           </div>
 
           {/* Collapsible YAML Editor */}

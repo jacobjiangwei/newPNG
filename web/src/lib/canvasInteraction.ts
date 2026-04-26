@@ -1,5 +1,6 @@
 import type { BoundingBox } from "./hitTest";
 import type { NpngElement } from "./types";
+import { parsePath } from "./pathParser";
 
 type InteractiveElement = NpngElement & {
   x?: number;
@@ -14,6 +15,7 @@ type InteractiveElement = NpngElement & {
   y1?: number;
   x2?: number;
   y2?: number;
+  d?: string;
 };
 
 export type HandleId = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
@@ -61,7 +63,48 @@ export function cursorForHandle(handle: HandleId | null): string {
   return map[handle];
 }
 
-export function applyMove(element: NpngElement, dx: number, dy: number, origProps: Record<string, number>): Record<string, number> {
+const roundCoord = (value: number): number => {
+  const rounded = Math.round(value * 10) / 10;
+  return Object.is(rounded, -0) ? 0 : rounded;
+};
+
+const formatCoord = (value: number): string => String(roundCoord(value));
+
+function translateAbsolutePairs(args: number[], dx: number, dy: number, start = 0): number[] {
+  const next = [...args];
+  for (let i = start; i + 1 < next.length; i += 2) {
+    next[i] += dx;
+    next[i + 1] += dy;
+  }
+  return next;
+}
+
+export function translatePathData(d: string, dx: number, dy: number): string {
+  return parsePath(d).map(([cmd, args], commandIndex) => {
+    let next = [...args];
+    if ("MLT".includes(cmd)) {
+      next = translateAbsolutePairs(args, dx, dy);
+    } else if (cmd === "m" && commandIndex === 0 && next.length >= 2) {
+      next[0] += dx;
+      next[1] += dy;
+    } else if (cmd === "H") {
+      next = args.map((x) => x + dx);
+    } else if (cmd === "V") {
+      next = args.map((y) => y + dy);
+    } else if ("CSQ".includes(cmd)) {
+      next = translateAbsolutePairs(args, dx, dy);
+    } else if (cmd === "A") {
+      next = [...args];
+      for (let i = 0; i + 6 < next.length; i += 7) {
+        next[i + 5] += dx;
+        next[i + 6] += dy;
+      }
+    }
+    return next.length > 0 ? `${cmd} ${next.map(formatCoord).join(" ")}` : cmd;
+  }).join(" ");
+}
+
+export function applyMove(element: NpngElement, dx: number, dy: number, origProps: Record<string, number>): Record<string, unknown> {
   const e = element as InteractiveElement;
   switch (element.type) {
     case "rect":
@@ -77,6 +120,8 @@ export function applyMove(element: NpngElement, dx: number, dy: number, origProp
         x1: (origProps.x1 ?? e.x1 ?? 0) + dx, y1: (origProps.y1 ?? e.y1 ?? 0) + dy,
         x2: (origProps.x2 ?? e.x2 ?? 0) + dx, y2: (origProps.y2 ?? e.y2 ?? 0) + dy,
       };
+    case "path":
+      return e.d ? { d: translatePathData(e.d, dx, dy) } : {};
     default:
       return {};
   }
@@ -117,6 +162,7 @@ export function getOrigProps(element: NpngElement): Record<string, number> {
     case "rect": return { x: e.x ?? 0, y: e.y ?? 0, width: e.width ?? 0, height: e.height ?? 0 };
     case "ellipse": return { cx: e.cx ?? 0, cy: e.cy ?? 0, rx: e.rx ?? 0, ry: e.ry ?? 0 };
     case "line": return { x1: e.x1 ?? 0, y1: e.y1 ?? 0, x2: e.x2 ?? 0, y2: e.y2 ?? 0 };
+    case "path": return {};
     case "text": return { x: e.x ?? 0, y: e.y ?? 0 };
     case "image": return { x: e.x ?? 0, y: e.y ?? 0, width: e.width ?? 100, height: e.height ?? 100 };
     case "frame": return { x: e.x ?? 0, y: e.y ?? 0, width: e.width ?? 0, height: e.height ?? 0 };
