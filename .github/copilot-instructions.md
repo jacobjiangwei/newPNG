@@ -13,15 +13,15 @@ newPNG/
 ├── web/                        # Next.js 16 web application (THE main deliverable)
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── page.tsx        # Main three-panel layout (ExamplesPanel | CanvasPreview | YamlEditor)
+│   │   │   ├── page.tsx        # Figma-like Studio layout (AI/Layers/Source | Canvas | Inspector)
 │   │   │   ├── layout.tsx      # Root layout
 │   │   │   ├── globals.css     # Dark theme styles
-│   │   │   └── api/chat/route.ts  # Claude API streaming endpoint (not wired to UI yet)
+│   │   │   └── api/chat/route.ts  # Claude API streaming endpoint
 │   │   ├── components/
 │   │   │   ├── CanvasPreview.tsx   # Canvas 2D renderer component
 │   │   │   ├── YamlEditor.tsx      # CodeMirror 6 YAML editor
 │   │   │   ├── ExamplesPanel.tsx   # Built-in examples + clipboard paste
-│   │   │   └── ChatPanel.tsx       # AI chat (deprecated, replaced by ExamplesPanel)
+│   │   │   └── ChatPanel.tsx       # AI chat and patch panel
 │   │   └── lib/
 │   │       ├── renderer.ts     # Core rendering engine (~300 lines, Canvas 2D)
 │   │       ├── types.ts        # TypeScript interfaces for npng format
@@ -32,6 +32,7 @@ newPNG/
 │   └── package.json
 ├── spec/
 │   ├── npng-v3.md              # npng format specification (v0.3 baseline)
+│   ├── AI_GENERATION_GUIDE.md  # Prompt-friendly rules for AI-generated npng
 │   └── FORMAT_ROADMAP.md       # Format evolution roadmap
 ├── examples/                   # 22+ example .npng files
 ├── renderer/                   # Original Python renderer (reference only)
@@ -103,6 +104,7 @@ newPNG/
 - Follow existing code patterns and naming conventions
 - Use Tailwind for styling, match the dark theme
 - Refer to `spec/npng-v3.md` when working on renderer or format-related features
+- Refer to `spec/AI_GENERATION_GUIDE.md` when working on AI prompts or generated examples
 - Refer to `examples/*.npng` for real-world format usage
 - Update `PROGRESS.md` when completing major milestones
 
@@ -126,7 +128,7 @@ canvas:
   width: 800
   height: 600
   background: "#FFFFFF"
-defs: {}          # Reusable element definitions
+defs: []          # Reusable element definitions
 layers:
   - name: "Layer 1"
     opacity: 1.0
@@ -140,7 +142,7 @@ layers:
         fill: "#FF0000"
 ```
 
-Supported element types: `rect`, `ellipse`, `line`, `text`, `path`, `group`, `use`.
+Supported core element types: `rect`, `ellipse`, `line`, `text`, `path`, `group`, `use`; the Studio also supports `image`, `frame`, and component instances.
 
 The renderer (`web/src/lib/renderer.ts`) supports all v0.3/v0.4 features including gradients, transforms, blend modes, filters, clip paths, masks, and defs/use references. The full spec is in `spec/npng-v3.md`.
 

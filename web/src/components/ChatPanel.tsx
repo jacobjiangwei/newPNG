@@ -16,6 +16,9 @@ interface ChatPanelProps {
   } | null;
 }
 
+const AI_GUIDE_URL = "https://github.com/jacobjiangwei/newPNG/blob/main/spec/AI_GENERATION_GUIDE.md";
+const FORMAT_SPEC_URL = "https://github.com/jacobjiangwei/newPNG/blob/main/spec/npng-v3.md";
+
 export default function ChatPanel({ onYamlGenerated, currentYaml, selectionContext }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -96,8 +99,30 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
 
   return (
     <div className="flex flex-col h-full bg-[#1e1e1e]">
-      <div className="px-3 py-2 text-xs font-semibold text-zinc-400 border-b border-zinc-700">
-        Text-to-Design AI
+      <div className="flex items-center justify-between gap-3 border-b border-zinc-700 px-3 py-2">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-zinc-300">Text-to-Design AI</div>
+          <div className="text-[10px] text-zinc-500">Generates editable npng source</div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-[10px] font-medium">
+          <a
+            href={AI_GUIDE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-blue-300 hover:text-blue-200"
+          >
+            AI guide
+          </a>
+          <span className="text-zinc-600">/</span>
+          <a
+            href={FORMAT_SPEC_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-zinc-400 hover:text-zinc-200"
+          >
+            Spec
+          </a>
+        </div>
       </div>
       <div className="flex-1 overflow-auto p-3 space-y-3">
         {messages.length === 0 && (
@@ -113,6 +138,19 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
             <p className="text-zinc-600 text-xs">
               Try: &quot;Design a glassmorphism launch card for an AI design tool.&quot;
             </p>
+            <div className="rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-2 text-xs text-zinc-500">
+              Agents should return full <span className="font-mono text-zinc-300">npng: &quot;0.3&quot;</span>{" "}
+              YAML with layers, editable text, stable IDs, and named objects.{" "}
+              <a
+                href={AI_GUIDE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-blue-300 hover:text-blue-200"
+              >
+                Read the generation rules
+              </a>
+              .
+            </div>
           </div>
         )}
         {messages.map((msg, i) => (

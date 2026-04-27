@@ -14,6 +14,8 @@ NewPNG takes a different path: **AI generates editable design source**. The imag
 |---|---|
 | Product landing page | https://newpng.azurewebsites.net |
 | Design studio | https://newpng.azurewebsites.net/editing |
+| AI generation guide | https://github.com/jacobjiangwei/newPNG/blob/main/spec/AI_GENERATION_GUIDE.md |
+| npng format spec | https://github.com/jacobjiangwei/newPNG/blob/main/spec/npng-v3.md |
 
 ## Why NewPNG exists
 
@@ -59,7 +61,7 @@ Export sharp PNG or share .npng text
 A tiny example:
 
 ```yaml
-npng: "0.4"
+npng: "0.3"
 canvas:
   width: 640
   height: 360
