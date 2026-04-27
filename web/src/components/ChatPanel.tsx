@@ -59,7 +59,6 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
   const [copyError, setCopyError] = useState<string | null>(null);
   const [pasteStatus, setPasteStatus] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const externalAiPrompt = buildExternalAiPrompt(externalImageRequest);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -232,17 +231,25 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
                       1
                     </div>
                     <div>
-                      <div className="font-medium text-zinc-300">Copy prompt</div>
-                      <div className="text-[11px] text-zinc-500">It includes your request and the NewPNG rules.</div>
+                      <div className="font-medium text-zinc-300">Describe</div>
+                      <div className="text-[11px] text-zinc-500">Write what you want to generate above.</div>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
                       2
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="font-medium text-zinc-300">Go out</div>
                       <div className="text-[11px] text-zinc-500">Paste it into your favorite AI tool.</div>
+                      <button
+                        type="button"
+                        onClick={handleCopyPrompt}
+                        disabled={!externalImageRequest.trim()}
+                        className="mt-2 rounded bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {copiedPrompt ? "Copied" : "Copy"}
+                      </button>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -264,33 +271,7 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, selectionConte
                       {pasteStatus && <div className="mt-1 text-[11px] text-emerald-300">{pasteStatus}</div>}
                     </div>
                   </div>
-                </div>
-                <div className="rounded-lg border border-blue-500/25 bg-blue-500/10 p-2 text-xs text-blue-100/90">
-                  <div className="mb-1 font-semibold text-blue-200">Prompt to copy into any AI tool</div>
-                  <textarea
-                    readOnly
-                    value={externalAiPrompt}
-                    className="h-48 w-full resize-none rounded border border-zinc-700 bg-zinc-950/80 p-2 font-mono text-[10px] leading-relaxed text-zinc-300 outline-none"
-                  />
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={handleCopyPrompt}
-                      disabled={!externalImageRequest.trim()}
-                      className="rounded bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {copiedPrompt ? "Copied" : "Copy prompt with request"}
-                    </button>
-                    <a
-                      href={AI_GUIDE_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[11px] font-medium text-blue-300 hover:text-blue-200"
-                    >
-                      Full generation guide
-                    </a>
-                  </div>
-                  {copyError && <div className="mt-2 text-[11px] text-red-300">{copyError}</div>}
+                  {copyError && <div className="text-[11px] text-red-300">{copyError}</div>}
                 </div>
                 <p className="text-xs text-zinc-600">
                   Short version: generate editable NewPNG source, not pixels.
