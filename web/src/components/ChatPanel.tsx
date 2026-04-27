@@ -399,15 +399,17 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, onOpenLayers, 
                       2
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium text-zinc-300">Go out</div>
-                      <div className="text-[11px] text-zinc-500">Paste it into your favorite AI tool.</div>
+                      <div className="font-medium text-zinc-300">Ask AI to generate</div>
+                      <div className="text-[11px] text-zinc-500">
+                        Copy a prompt, then paste it into ChatGPT, Claude, Gemini, or any AI tool.
+                      </div>
                       <button
                         type="button"
                         onClick={handleCopyPrompt}
                         disabled={!externalImageRequest.trim()}
                         className="mt-2 rounded bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {copiedPrompt ? "Copied" : "Copy"}
+                        {copiedPrompt ? "Copied" : "Copy prompt for AI"}
                       </button>
                     </div>
                   </div>
