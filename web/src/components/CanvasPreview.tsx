@@ -18,6 +18,8 @@ import {
 } from "../lib/canvasInteraction";
 import { getElementDisplayName } from "../lib/elementLabels";
 import { generateShapeForTool } from "../lib/presetShapes";
+import { calculateSmartSnap, type SmartGuide, type SmartSnapResult } from "../lib/smartGuides";
+import { addressKey, getElementAtAddress, sameAddress as treeSameAddress } from "../lib/elementTree";
 import { deletePathAnchor, getPathControlLines, getPathHandleAtPoint, getPathHandles, insertPathAnchor, isEditablePathData, updatePathHandle } from "../lib/pathEditing";
 import type { NpngDocument, NpngElement } from "../lib/types";
 import type { ElementAddress, EditorAction, Tool, DragState, DrawState, PenState, PolyState } from "../lib/editorState";
@@ -98,7 +100,7 @@ function normalizeBox(startX: number, startY: number, currentX: number, currentY
 }
 
 function addressEquals(a: ElementAddress, b: ElementAddress): boolean {
-  return a.layerIndex === b.layerIndex && a.elementIndex === b.elementIndex;
+  return treeSameAddress(a, b);
 }
 
 function drawBadge(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, tone: "blue" | "amber" = "blue"): void {
@@ -117,6 +119,35 @@ function drawBadge(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   ctx.fillStyle = tone === "amber" ? "#FEF3C7" : "#DBEAFE";
   ctx.fillText(text, drawX + paddingX, drawY - 6);
   ctx.restore();
+}
+
+function drawSmartGuides(ctx: CanvasRenderingContext2D, guides: SmartGuide[], width: number, height: number): void {
+  if (guides.length === 0) return;
+  ctx.save();
+  ctx.strokeStyle = "#EC4899";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 4]);
+  for (const guide of guides) {
+    ctx.beginPath();
+    if (guide.orientation === "vertical") {
+      const y1 = Math.max(0, Math.min(height, guide.from));
+      const y2 = Math.max(0, Math.min(height, guide.to));
+      ctx.moveTo(guide.position, y1);
+      ctx.lineTo(guide.position, y2);
+    } else {
+      const x1 = Math.max(0, Math.min(width, guide.from));
+      const x2 = Math.max(0, Math.min(width, guide.to));
+      ctx.moveTo(x1, guide.position);
+      ctx.lineTo(x2, guide.position);
+    }
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawDimensionBadge(ctx: CanvasRenderingContext2D, box: BoundingBox): void {
+  drawBadge(ctx, `${Math.round(box.width)} x ${Math.round(box.height)}`, box.x + box.width + 8, box.y + box.height + 22, "amber");
 }
 
 export default function CanvasPreview({
@@ -307,7 +338,7 @@ export default function CanvasPreview({
       parsedDoc?.layers
     ) {
       const topHit = hoverState.hits[0];
-      const elem = parsedDoc.layers[topHit.layerIndex]?.elements?.[topHit.elementIndex];
+      const elem = getElementAtAddress(parsedDoc, topHit);
       if (elem) {
         const box = getBoundingBox(elem);
         ctx.strokeStyle = "#F59E0B";
@@ -325,9 +356,8 @@ export default function CanvasPreview({
     if (!selection.length || !parsedDoc?.layers) return;
     const selectionBox = getSelectionBoundingBox(parsedDoc, selection);
     for (const sel of selection) {
-      const layer = parsedDoc.layers[sel.layerIndex];
-      if (!layer?.elements?.[sel.elementIndex]) continue;
-      const elem = layer.elements[sel.elementIndex];
+      const elem = getElementAtAddress(parsedDoc, sel);
+      if (!elem) continue;
       const box = getBoundingBox(elem);
 
       ctx.strokeStyle = selection.length > 1 ? "rgba(96, 165, 250, 0.45)" : "#3B82F6";
@@ -370,8 +400,7 @@ export default function CanvasPreview({
           const baseD = elem.d ?? "";
           const editingD =
             pathDrag &&
-            pathDrag.address.layerIndex === sel.layerIndex &&
-            pathDrag.address.elementIndex === sel.elementIndex
+            addressEquals(pathDrag.address, sel)
               ? pathDrag.currentD
               : baseD;
 
@@ -485,13 +514,16 @@ export default function CanvasPreview({
     return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
   }, []);
 
-  const snapMoveDelta = useCallback((dx: number, dy: number, referenceBox: BoundingBox | null) => {
-    if (!showGrid || gridSize <= 0 || !referenceBox) return { dx, dy };
-    return {
-      dx: Math.round((referenceBox.x + dx) / gridSize) * gridSize - referenceBox.x,
-      dy: Math.round((referenceBox.y + dy) / gridSize) * gridSize - referenceBox.y,
-    };
-  }, [showGrid, gridSize]);
+  const snapMoveDelta = useCallback((dx: number, dy: number, referenceBox: BoundingBox | null): SmartSnapResult => {
+    let snappedDx = dx;
+    let snappedDy = dy;
+    if (showGrid && gridSize > 0 && referenceBox) {
+      snappedDx = Math.round((referenceBox.x + dx) / gridSize) * gridSize - referenceBox.x;
+      snappedDy = Math.round((referenceBox.y + dy) / gridSize) * gridSize - referenceBox.y;
+    }
+    if (!parsedDoc || !referenceBox) return { dx: snappedDx, dy: snappedDy, guides: [] };
+    return calculateSmartSnap(parsedDoc, selection, referenceBox, snappedDx, snappedDy);
+  }, [showGrid, gridSize, parsedDoc, selection]);
 
   const getMenuPosition = useCallback((e: React.MouseEvent): { left: number; top: number } => {
     const container = containerRef.current;
@@ -568,8 +600,7 @@ export default function CanvasPreview({
     // Check if clicking on a resize handle of selected element (single select only)
     if (selection.length === 1 && parsedDoc.layers) {
       const sel = selection[0];
-      const layer = parsedDoc.layers[sel.layerIndex];
-      const elem = layer?.elements?.[sel.elementIndex];
+      const elem = getElementAtAddress(parsedDoc, sel);
       if (elem) {
         if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
           const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(8, 14 / zoom));
@@ -665,7 +696,7 @@ export default function CanvasPreview({
     }
 
     if (parsedDoc.layers) {
-      const elem = parsedDoc.layers[hit.layerIndex]?.elements?.[hit.elementIndex];
+      const elem = getElementAtAddress(parsedDoc, hit);
       if (elem) {
         dispatch({
           type: "SET_DRAG",
@@ -752,7 +783,7 @@ export default function CanvasPreview({
       if (Math.abs(rawDx) > DRAG_THRESHOLD || Math.abs(rawDy) > DRAG_THRESHOLD) {
         setPendingHitMenu(null);
       }
-      const snapped = dragState.type === "move" ? snapMoveDelta(rawDx, rawDy, selectionBox) : { dx: rawDx, dy: rawDy };
+      const snapped = dragState.type === "move" ? snapMoveDelta(rawDx, rawDy, selectionBox) : { dx: rawDx, dy: rawDy, guides: [] };
 
       const overlay = overlayRef.current;
       const main = canvasRef.current;
@@ -766,7 +797,7 @@ export default function CanvasPreview({
       const previewBoxes: BoundingBox[] = [];
       if (dragState.type === "move") {
         for (const sel of selection) {
-          const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+          const elem = getElementAtAddress(parsedDoc, sel);
           if (!elem) continue;
           const moved = applyMove(elem, snapped.dx, snapped.dy, getOrigProps(elem));
           const tempElem = { ...elem, ...moved } as NpngElement;
@@ -775,7 +806,7 @@ export default function CanvasPreview({
         tempBox = mergeBoundingBoxes(previewBoxes);
       } else if (dragState.type === "rotate") {
         const sel = selection[0];
-        const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+        const elem = getElementAtAddress(parsedDoc, sel);
         if (!elem) return;
         const rotated = applyRotation(elem, pt.x, pt.y, dragState.origProps);
         const tempElem = { ...elem, ...rotated } as NpngElement;
@@ -783,7 +814,7 @@ export default function CanvasPreview({
         previewBoxes.push(tempBox);
       } else if (dragState.handle) {
         const sel = selection[0];
-        const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+        const elem = getElementAtAddress(parsedDoc, sel);
         if (!elem) return;
         const resized = applyResize(elem, dragState.handle, rawDx, rawDy, dragState.origProps);
         const tempElem = { ...elem, ...resized } as NpngElement;
@@ -815,6 +846,8 @@ export default function CanvasPreview({
             ctx.strokeRect(h.x, h.y, h.size, h.size);
           }
         }
+        drawSmartGuides(ctx, snapped.guides, overlay.width, overlay.height);
+        drawDimensionBadge(ctx, tempBox);
       }
       return;
     }
@@ -835,8 +868,7 @@ export default function CanvasPreview({
       if (canvas) canvas.style.cursor = "crosshair";
     } else if (activeTool === "select" && selection.length === 1 && parsedDoc?.layers) {
       const sel = selection[0];
-      const layer = parsedDoc.layers[sel.layerIndex];
-      const elem = layer?.elements?.[sel.elementIndex];
+      const elem = getElementAtAddress(parsedDoc, sel);
       if (elem) {
         if (elem.type === "path" && elem.d && isEditablePathData(elem.d) && !elem.transform) {
           const pathHandle = getPathHandleAtPoint(elem.d, pt.x, pt.y, Math.max(8, 14 / zoom));
@@ -945,11 +977,11 @@ export default function CanvasPreview({
         return;
       }
       setPendingHitMenu(null);
-      const snapped = dragState.type === "move" ? snapMoveDelta(rawDx, rawDy, selectionBox) : { dx: rawDx, dy: rawDy };
+      const snapped = dragState.type === "move" ? snapMoveDelta(rawDx, rawDy, selectionBox) : { dx: rawDx, dy: rawDy, guides: [] };
       if (Math.abs(rawDx) > 1 || Math.abs(rawDy) > 1) {
         if (dragState.type === "move") {
           const updates = selection.flatMap((sel) => {
-            const elem = parsedDoc.layers?.[sel.layerIndex]?.elements?.[sel.elementIndex];
+            const elem = getElementAtAddress(parsedDoc, sel);
             if (!elem) return [];
             const props = applyMove(elem, snapped.dx, snapped.dy, getOrigProps(elem));
             return Object.keys(props).length > 0 ? [{ address: sel, props }] : [];
@@ -959,14 +991,14 @@ export default function CanvasPreview({
           }
         } else if (dragState.type === "rotate") {
           const sel = selection[0];
-          const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+          const elem = getElementAtAddress(parsedDoc, sel);
           if (elem) {
             const props = applyRotation(elem, pt.x, pt.y, dragState.origProps);
             dispatch({ type: "UPDATE_ELEMENT", address: sel, props });
           }
         } else {
           const sel = selection[0];
-          const elem = parsedDoc.layers[sel.layerIndex]?.elements?.[sel.elementIndex];
+          const elem = getElementAtAddress(parsedDoc, sel);
           if (elem) {
             const props = applyResize(elem, dragState.handle!, rawDx, rawDy, dragState.origProps);
             if (Object.keys(props).length > 0) {
@@ -1029,7 +1061,7 @@ export default function CanvasPreview({
           <div className="max-h-56 overflow-auto py-1">
             {hitMenu.hits.map((hit, index) => (
               <button
-                key={`${hit.layerIndex}-${hit.elementIndex}`}
+                key={addressKey(hit)}
                 onClick={() => selectFromHitMenu(hit, hitMenu.append)}
                 className="w-full px-2.5 py-1.5 text-left hover:bg-zinc-800 flex items-center gap-2"
               >

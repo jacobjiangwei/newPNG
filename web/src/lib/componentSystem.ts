@@ -1,4 +1,5 @@
 import type { NpngElement, ComponentDef, ComponentInstanceElement } from "./types";
+import { getBoundingBox } from "./hitTest";
 
 type MutableElement = NpngElement & Record<string, unknown>;
 
@@ -9,11 +10,6 @@ export function resolveInstance(
   const compDef = components.find(c => c.id === instance.component_id);
   if (!compDef) return null;
   const resolved = structuredClone(compDef.master) as MutableElement;
-  // Apply positional overrides from instance
-  if (instance.x !== undefined) resolved.x = instance.x;
-  if (instance.y !== undefined) resolved.y = instance.y;
-  if (instance.width !== undefined) resolved.width = instance.width;
-  if (instance.height !== undefined) resolved.height = instance.height;
   // Apply property overrides
   if (instance.overrides) {
     for (const [k, v] of Object.entries(instance.overrides)) {
@@ -23,7 +19,35 @@ export function resolveInstance(
   // Apply element-level styling
   if (instance.fill !== undefined) resolved.fill = instance.fill;
   if (instance.stroke !== undefined) resolved.stroke = instance.stroke;
-  if (instance.opacity !== undefined) resolved.opacity = instance.opacity;
-  if (instance.transform !== undefined) resolved.transform = instance.transform;
-  return resolved as NpngElement;
+  const master = resolved as NpngElement;
+
+  if (
+    instance.x !== undefined ||
+    instance.y !== undefined ||
+    instance.width !== undefined ||
+    instance.height !== undefined
+  ) {
+    const masterBox = getBoundingBox(master);
+    const targetX = instance.x ?? masterBox.x;
+    const targetY = instance.y ?? masterBox.y;
+    const targetWidth = instance.width ?? masterBox.width;
+    const targetHeight = instance.height ?? masterBox.height;
+    const scaleX = masterBox.width > 0 ? targetWidth / masterBox.width : 1;
+    const scaleY = masterBox.height > 0 ? targetHeight / masterBox.height : 1;
+    const mapped: NpngElement = {
+      type: "group",
+      name: instance.name ?? compDef.name,
+      opacity: instance.opacity,
+      transform: {
+        translate: [targetX - masterBox.x, targetY - masterBox.y],
+        scale: [scaleX, scaleY],
+        origin: [masterBox.x, masterBox.y],
+      },
+      elements: [master],
+    };
+    return mapped;
+  }
+
+  if (instance.opacity !== undefined) master.opacity = instance.opacity;
+  return master;
 }

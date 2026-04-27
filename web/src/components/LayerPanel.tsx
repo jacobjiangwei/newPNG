@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { NpngDocument } from "../lib/types";
+import type { NpngDocument, NpngElement } from "../lib/types";
 import type { ElementAddress, EditorAction } from "../lib/editorState";
 import { getElementShortLabel } from "../lib/elementLabels";
+import { addressKey, childElements, makeAddress, sameAddress } from "../lib/elementTree";
 
 interface LayerPanelProps {
   doc: NpngDocument | null;
@@ -42,6 +43,80 @@ export default function LayerPanel({ doc, selection, dispatch }: LayerPanelProps
       </div>
     );
   }
+
+  const renderElementRows = (
+    layerIndex: number,
+    elements: NpngElement[],
+    depth: number,
+    pathPrefix: number[],
+    layerLocked: boolean,
+    ancestorTransformed = false,
+  ): React.ReactNode => {
+    return [...elements.entries()].reverse().map(([elementIndex, elem]) => {
+      const path = [...pathPrefix, elementIndex];
+      const address = makeAddress(layerIndex, path);
+      const isSelected = selection.some(s => sameAddress(s, address));
+      const label = getElementShortLabel(elem, elementIndex);
+      const totalElements = elements.length;
+      const children = childElements(elem) ?? [];
+      const locked = layerLocked || elem.locked;
+      const childSelectionBlocked = ancestorTransformed;
+      const canReorder = depth === 0;
+      return (
+        <div key={addressKey(address)}>
+          <div className={`flex items-center transition-colors duration-150 ${
+            isSelected ? "bg-blue-600/50 border-l-2 border-blue-400" : "hover:bg-zinc-700/50 border-l-2 border-transparent"
+          }`}>
+            <button
+              onClick={(e) => dispatch({
+                type: "SELECT",
+                address,
+                append: e.shiftKey || e.metaKey || e.ctrlKey,
+              })}
+              disabled={locked || elem.visible === false || childSelectionBlocked}
+              className={`flex-1 text-left py-1 text-xs truncate disabled:cursor-not-allowed ${
+                isSelected ? "text-blue-200 font-medium" : locked || elem.visible === false || childSelectionBlocked ? "text-zinc-600" : "text-zinc-400"
+              }`}
+              style={{ paddingLeft: `${20 + depth * 14}px`, paddingRight: 4 }}
+              title={childSelectionBlocked ? "Select the transformed parent container first" : locked ? "Unlock before selecting" : elem.visible === false ? "Show before selecting" : "Click to select, Shift/Cmd/Ctrl-click to add or remove"}
+            >
+              {children.length > 0 ? "▸ " : ""}
+              {label}
+            </button>
+            <button
+              onClick={() => dispatch({ type: "TOGGLE_ELEMENT_VISIBILITY", address })}
+              disabled={locked}
+              className={`text-[10px] px-0.5 disabled:text-zinc-700 ${elem.visible === false ? "text-zinc-600" : "text-zinc-400 hover:text-zinc-200"}`}
+              title={elem.visible === false ? "Show object" : "Hide object"}
+            >
+              {elem.visible === false ? "○" : "●"}
+            </button>
+            <button
+              onClick={() => dispatch({ type: "TOGGLE_ELEMENT_LOCK", address })}
+              disabled={layerLocked}
+              className={`text-[10px] px-0.5 disabled:text-zinc-700 ${elem.locked ? "text-amber-300" : "text-zinc-500 hover:text-zinc-300"}`}
+              title={elem.locked ? "Unlock object" : "Lock object"}
+            >
+              {elem.locked ? "L" : "-"}
+            </button>
+            <button
+              onClick={() => dispatch({ type: "REORDER_ELEMENT", from: address, toIndex: Math.min(totalElements - 1, elementIndex + 1) })}
+              disabled={!canReorder || elementIndex === totalElements - 1 || locked}
+              className="text-[10px] text-zinc-500 hover:text-zinc-300 disabled:text-zinc-700 px-0.5"
+              title={canReorder ? "Move object up visually" : "Nested reordering is not available yet"}
+            >▲</button>
+            <button
+              onClick={() => dispatch({ type: "REORDER_ELEMENT", from: address, toIndex: Math.max(0, elementIndex - 1) })}
+              disabled={!canReorder || elementIndex === 0 || locked}
+              className="text-[10px] text-zinc-500 hover:text-zinc-300 disabled:text-zinc-700 px-1"
+              title={canReorder ? "Move object down visually" : "Nested reordering is not available yet"}
+            >▼</button>
+          </div>
+          {children.length > 0 && renderElementRows(layerIndex, children, depth + 1, path, locked || elem.visible === false, ancestorTransformed || !!elem.transform)}
+        </div>
+      );
+    });
+  };
 
   return (
     <div className="flex flex-col h-full bg-[#1e1e1e]">
@@ -107,59 +182,7 @@ export default function LayerPanel({ doc, selection, dispatch }: LayerPanelProps
                 title="Delete layer"
               >✕</button>
             </div>
-            {[...(layer.elements ?? []).entries()].reverse().map(([ei, elem]) => {
-              const isSelected = selection.some(s => s.layerIndex === li && s.elementIndex === ei);
-              const label = getElementShortLabel(elem, ei);
-              const totalElements = (layer.elements ?? []).length;
-              return (
-                <div key={ei} className={`flex items-center transition-colors duration-150 ${
-                  isSelected ? "bg-blue-600/50 border-l-2 border-blue-400" : "hover:bg-zinc-700/50 border-l-2 border-transparent"
-                }`}>
-                  <button
-                    onClick={(e) => dispatch({
-                      type: "SELECT",
-                      address: { layerIndex: li, elementIndex: ei },
-                      append: e.shiftKey || e.metaKey || e.ctrlKey,
-                    })}
-                    disabled={layer.locked || elem.locked || elem.visible === false}
-                    className={`flex-1 text-left px-5 py-1 text-xs truncate disabled:cursor-not-allowed ${
-                      isSelected ? "text-blue-200 font-medium" : layer.locked || elem.locked || elem.visible === false ? "text-zinc-600" : "text-zinc-400"
-                    }`}
-                    title={layer.locked || elem.locked ? "Unlock before selecting" : elem.visible === false ? "Show before selecting" : "Click to select, Shift/Cmd/Ctrl-click to add or remove"}
-                  >
-                    {label}
-                  </button>
-                  <button
-                    onClick={() => dispatch({ type: "TOGGLE_ELEMENT_VISIBILITY", address: { layerIndex: li, elementIndex: ei } })}
-                    disabled={layer.locked || elem.locked}
-                    className={`text-[10px] px-0.5 disabled:text-zinc-700 ${elem.visible === false ? "text-zinc-600" : "text-zinc-400 hover:text-zinc-200"}`}
-                    title={elem.visible === false ? "Show object" : "Hide object"}
-                  >
-                    {elem.visible === false ? "○" : "●"}
-                  </button>
-                  <button
-                    onClick={() => dispatch({ type: "TOGGLE_ELEMENT_LOCK", address: { layerIndex: li, elementIndex: ei } })}
-                    disabled={layer.locked}
-                    className={`text-[10px] px-0.5 disabled:text-zinc-700 ${elem.locked ? "text-amber-300" : "text-zinc-500 hover:text-zinc-300"}`}
-                    title={elem.locked ? "Unlock object" : "Lock object"}
-                  >
-                    {elem.locked ? "L" : "-"}
-                  </button>
-                  <button
-                    onClick={() => dispatch({ type: "REORDER_ELEMENT", from: { layerIndex: li, elementIndex: ei }, toIndex: Math.min(totalElements - 1, ei + 1) })}
-                    disabled={ei === totalElements - 1 || layer.locked || elem.locked}
-                    className="text-[10px] text-zinc-500 hover:text-zinc-300 disabled:text-zinc-700 px-0.5"
-                    title="Move object up visually"
-                  >▲</button>
-                  <button
-                    onClick={() => dispatch({ type: "REORDER_ELEMENT", from: { layerIndex: li, elementIndex: ei }, toIndex: Math.max(0, ei - 1) })}
-                    disabled={ei === 0 || layer.locked || elem.locked}
-                    className="text-[10px] text-zinc-500 hover:text-zinc-300 disabled:text-zinc-700 px-1"
-                    title="Move object down visually"
-                  >▼</button>
-                </div>
-              );
-            })}
+            {renderElementRows(li, layer.elements ?? [], 0, [], !!layer.locked)}
           </div>
         ))}
       </div>

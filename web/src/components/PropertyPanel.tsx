@@ -14,6 +14,10 @@ import type {
   AutoLayoutSpec,
   TransformSpec,
   Layer,
+  EffectSpec,
+  BlendMode,
+  LinearGradient,
+  RadialGradient,
 } from "../lib/types";
 import { getBoundingBox } from "../lib/hitTest";
 import { isEditablePathData } from "../lib/pathEditing";
@@ -29,6 +33,9 @@ interface PropertyPanelProps {
 }
 
 const ARROW_TYPES: ArrowEndType[] = ["none", "arrow", "circle", "diamond"];
+const BLEND_MODES: BlendMode[] = ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion"];
+const EFFECT_TYPES: EffectSpec["type"][] = ["drop-shadow", "inner-shadow", "outer-glow", "inner-glow", "blur"];
+const IMAGE_FITS = ["fill", "cover", "contain", "none"];
 const ALIGN_BUTTONS: { label: string; alignment: AlignmentCommand; title: string }[] = [
   { label: "Left", alignment: "left", title: "Align left" },
   { label: "H Center", alignment: "center", title: "Align horizontal centers" },
@@ -67,8 +74,19 @@ type EditableElement = NpngElement & {
   stroke?: StrokeSpec;
   fills?: FillLayer[];
   strokes?: StrokeLayer[];
+  blend_mode?: BlendMode;
+  filters?: EffectSpec[];
+  effects?: EffectSpec[];
   opacity?: number;
   href?: string;
+  fit?: "fill" | "cover" | "contain" | "none";
+  border_radius?: number;
+  adjustments?: {
+    brightness?: number;
+    contrast?: number;
+    saturation?: number;
+    hue_rotate?: number;
+  };
   arrow_start?: ArrowEndType;
   arrow_end?: ArrowEndType;
   constraints?: Constraints;
@@ -261,6 +279,14 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
           >
             Move to Top
           </InspectorButton>
+          {e.type !== "component-instance" && (
+            <InspectorButton
+              title="Create a reusable component definition from this object"
+              onClick={() => dispatch({ type: "CREATE_COMPONENT_FROM_SELECTION" })}
+            >
+              Create Component
+            </InspectorButton>
+          )}
           {e.type === "group" && (
             <InspectorButton
               title={!e.transform && (e.opacity === undefined || e.opacity === 1)
@@ -274,6 +300,23 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
           )}
         </div>
       </Section>
+
+      {!!doc?.components?.length && (
+        <Section title="Component Library">
+          <div className="text-zinc-500 leading-relaxed">
+            Insert an instance of a saved component into the top editable layer.
+          </div>
+          {doc.components.map((component) => (
+            <InspectorButton
+              key={component.id}
+              title={`Insert ${component.name}`}
+              onClick={() => dispatch({ type: "INSERT_COMPONENT_INSTANCE", componentId: component.id })}
+            >
+              Insert {component.name}
+            </InspectorButton>
+          ))}
+        </Section>
+      )}
 
       {e.type === "path" && (
         <Section title="Path Edit">
@@ -353,7 +396,10 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
             />
           </label>
           <NumberInput label="Size" value={e.font_size ?? 16} onChange={v => update({ font_size: v })} />
+          <NumberInput label="Letter" value={e.letter_spacing ?? 0} onChange={v => update({ letter_spacing: v || null })} />
+          <NumberInput label="Para" value={e.paragraph_spacing ?? 0} onChange={v => update({ paragraph_spacing: v || null })} />
           <SelectInput label="Align" value={e.align ?? "left"} options={["left", "center", "right"]} onChange={v => update({ align: v })} />
+          <SelectInput label="V Align" value={e.vertical_align ?? "top"} options={["top", "center", "bottom"]} onChange={v => update({ vertical_align: v })} />
           <SelectInput label="Weight" value={e.font_weight ?? "normal"} options={["normal", "bold"]} onChange={v => update({ font_weight: v })} />
         </Section>
       )}
@@ -382,7 +428,10 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
           {fillStr !== "gradient" ? (
             <ColorInput label="Color" value={fillStr || "#000000"} onChange={v => update({ fill: v })} />
           ) : (
-            <div className="text-zinc-500 text-xs">Gradient (edit in YAML)</div>
+            <GradientFillEditor
+              fill={e.fill}
+              onChange={(fill) => update({ fill })}
+            />
           )}
         </Section>
       )}
@@ -422,6 +471,12 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
       {/* Image controls */}
       {e.type === "image" && (
         <Section title="Image">
+          <SelectInput label="Fit" value={e.fit ?? "fill"} options={IMAGE_FITS} onChange={v => update({ fit: v })} />
+          <NumberInput label="Radius" value={e.border_radius ?? 0} onChange={v => update({ border_radius: v || null })} />
+          <NumberInput label="Bright" value={e.adjustments?.brightness ?? 0} onChange={v => update({ adjustments: { ...e.adjustments, brightness: v || undefined } })} />
+          <NumberInput label="Contrast" value={e.adjustments?.contrast ?? 0} onChange={v => update({ adjustments: { ...e.adjustments, contrast: v || undefined } })} />
+          <NumberInput label="Sat" value={e.adjustments?.saturation ?? 0} onChange={v => update({ adjustments: { ...e.adjustments, saturation: v || undefined } })} />
+          <NumberInput label="Hue" value={e.adjustments?.hue_rotate ?? 0} onChange={v => update({ adjustments: { ...e.adjustments, hue_rotate: v || undefined } })} />
           <button
             onClick={() => fileInputRef.current?.click()}
             className="text-xs px-2 py-1 bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-300"
@@ -448,7 +503,13 @@ export default function PropertyPanel({ element, address, selectionCount = 0, do
       {/* Opacity */}
       <Section title="Appearance">
         <NumberInput label="Opacity" value={e.opacity ?? 1} onChange={v => update({ opacity: Math.max(0, Math.min(1, v)) })} />
+        <SelectInput label="Blend" value={e.blend_mode ?? "normal"} options={BLEND_MODES} onChange={v => update({ blend_mode: v === "normal" ? null : v })} />
       </Section>
+
+      <EffectsEditor
+        effects={e.effects}
+        onChange={(effects) => update({ effects: effects.length > 0 ? effects : null })}
+      />
 
       <TransformEditor
         element={e}
@@ -581,10 +642,82 @@ function SpansEditor({ spans, onChange }: { spans: TextSpan[]; onChange: (spans:
               onChange={(e) => updateSpan(i, { font_size: e.target.value ? Number(e.target.value) : undefined })}
               className="w-10 bg-zinc-700 border border-zinc-600 rounded px-1 py-0.5 text-zinc-200 text-xs"
             />
+            <input
+              type="number"
+              value={span.letter_spacing ?? ""}
+              placeholder="ls"
+              onChange={(e) => updateSpan(i, { letter_spacing: e.target.value ? Number(e.target.value) : undefined })}
+              className="w-10 bg-zinc-700 border border-zinc-600 rounded px-1 py-0.5 text-zinc-200 text-xs"
+            />
           </div>
         </div>
       ))}
       <button onClick={addSpan} className="text-xs px-2 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-400">+ Add Span</button>
+    </div>
+  );
+}
+
+function isLinearGradient(fill: FillSpec | undefined): fill is LinearGradient {
+  return !!fill && typeof fill === "object" && fill.type === "linear-gradient";
+}
+
+function isRadialGradient(fill: FillSpec | undefined): fill is RadialGradient {
+  return !!fill && typeof fill === "object" && fill.type === "radial-gradient";
+}
+
+function GradientFillEditor({ fill, onChange }: { fill?: FillSpec; onChange: (fill: FillSpec) => void }) {
+  if (!isLinearGradient(fill) && !isRadialGradient(fill)) {
+    return <div className="text-zinc-500 text-xs">Unsupported gradient shape. Edit in YAML.</div>;
+  }
+
+  const updateStop = (index: number, patch: Partial<{ offset: number; color: string }>) => {
+    const stops = [...fill.stops];
+    stops[index] = { ...stops[index], ...patch };
+    onChange({ ...fill, stops });
+  };
+  const addStop = () => onChange({ ...fill, stops: [...fill.stops, { offset: 1, color: "#FFFFFF" }] });
+  const removeStop = (index: number) => onChange({ ...fill, stops: fill.stops.filter((_, i) => i !== index) });
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="grid grid-cols-2 gap-1">
+        {isLinearGradient(fill) ? (
+          <>
+            <NumberInput label="X1" value={fill.x1} onChange={v => onChange({ ...fill, x1: v })} />
+            <NumberInput label="Y1" value={fill.y1} onChange={v => onChange({ ...fill, y1: v })} />
+            <NumberInput label="X2" value={fill.x2} onChange={v => onChange({ ...fill, x2: v })} />
+            <NumberInput label="Y2" value={fill.y2} onChange={v => onChange({ ...fill, y2: v })} />
+          </>
+        ) : (
+          <>
+            <NumberInput label="CX" value={fill.cx} onChange={v => onChange({ ...fill, cx: v })} />
+            <NumberInput label="CY" value={fill.cy} onChange={v => onChange({ ...fill, cy: v })} />
+            <NumberInput label="R" value={fill.r} onChange={v => onChange({ ...fill, r: v })} />
+          </>
+        )}
+      </div>
+      {fill.stops.map((stop, index) => (
+        <div key={index} className="flex items-center gap-1">
+          <input
+            type="color"
+            value={stop.color.length >= 7 ? stop.color.slice(0, 7) : "#000000"}
+            onChange={(e) => updateStop(index, { color: e.target.value })}
+            className="w-5 h-5 rounded border border-zinc-600 bg-transparent cursor-pointer"
+          />
+          <input
+            type="number"
+            min={0}
+            max={1}
+            step={0.05}
+            value={stop.offset}
+            onChange={(e) => updateStop(index, { offset: Number(e.target.value) })}
+            className="w-16 bg-zinc-700 border border-zinc-600 rounded px-1 py-0.5 text-zinc-200 text-xs"
+          />
+          <span className="flex-1 text-zinc-500 text-[11px] truncate">{stop.color}</span>
+          <button onClick={() => removeStop(index)} className="text-red-400 text-xs px-1">-</button>
+        </div>
+      ))}
+      <button onClick={addStop} className="text-xs px-2 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-400">+ Stop</button>
     </div>
   );
 }
@@ -644,10 +777,59 @@ function StrokesEditor({ strokes, onChange }: { strokes?: StrokeLayer[]; onChang
             onChange={(ev) => updateStroke(i, { width: Number(ev.target.value) })}
             className="w-10 bg-zinc-700 border border-zinc-600 rounded px-1 py-0.5 text-zinc-200 text-xs"
           />
+          <select
+            value={sl.alignment ?? "center"}
+            onChange={(ev) => updateStroke(i, { alignment: ev.target.value as StrokeLayer["alignment"] })}
+            className="w-20 bg-zinc-700 border border-zinc-600 rounded px-1 py-0.5 text-zinc-200 text-xs"
+          >
+            <option value="inside">inside</option>
+            <option value="center">center</option>
+            <option value="outside">outside</option>
+          </select>
           <button onClick={() => removeStroke(i)} className="text-red-400 text-xs px-1">-</button>
         </div>
       ))}
       <button onClick={addStroke} className="text-xs px-2 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-400">+ Stroke</button>
+    </Section>
+  );
+}
+
+function EffectsEditor({ effects, onChange }: { effects?: EffectSpec[]; onChange: (effects: EffectSpec[]) => void }) {
+  const current = effects ?? [];
+  const addEffect = () => onChange([...current, { type: "drop-shadow", dx: 0, dy: 8, radius: 16, color: "#00000055" }]);
+  const removeEffect = (index: number) => onChange(current.filter((_, i) => i !== index));
+  const updateEffect = (index: number, patch: Partial<EffectSpec>) => {
+    const next = [...current];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  return (
+    <Section title="Effects">
+      {current.length === 0 && <div className="text-zinc-500 text-xs">No element effects</div>}
+      {current.map((effect, index) => (
+        <div key={index} className="flex flex-col gap-1 rounded bg-zinc-800/70 p-1">
+          <div className="flex items-center gap-1">
+            <select
+              value={effect.type}
+              onChange={(e) => updateEffect(index, { type: e.target.value as EffectSpec["type"] })}
+              className="flex-1 bg-zinc-700 border border-zinc-600 rounded px-1 py-0.5 text-zinc-200 text-xs"
+            >
+              {EFFECT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+            <button onClick={() => removeEffect(index)} className="text-red-400 text-xs px-1">-</button>
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            <NumberInput label="DX" value={effect.dx ?? 0} onChange={v => updateEffect(index, { dx: v })} />
+            <NumberInput label="DY" value={effect.dy ?? 0} onChange={v => updateEffect(index, { dy: v })} />
+            <NumberInput label="Blur" value={effect.radius ?? 8} onChange={v => updateEffect(index, { radius: v })} />
+            <NumberInput label="Spread" value={effect.spread ?? 0} onChange={v => updateEffect(index, { spread: v || undefined })} />
+          </div>
+          <ColorInput label="Color" value={effect.color?.slice(0, 7) ?? "#000000"} onChange={v => updateEffect(index, { color: v })} />
+          <NumberInput label="Opacity" value={effect.opacity ?? 1} onChange={v => updateEffect(index, { opacity: Math.max(0, Math.min(1, v)) })} />
+        </div>
+      ))}
+      <button onClick={addEffect} className="text-xs px-2 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-zinc-400">+ Effect</button>
     </Section>
   );
 }
@@ -684,7 +866,7 @@ function AutoLayoutEditor({ autoLayout, onChange }: { autoLayout?: AutoLayoutSpe
     <Section title="Auto Layout">
       <SelectInput label="Mode" value={autoLayout.mode ?? "horizontal"} options={["horizontal", "vertical"]} onChange={v => onChange({ ...autoLayout, mode: v as AutoLayoutSpec["mode"] })} />
       <NumberInput label="Gap" value={autoLayout.gap ?? 0} onChange={v => onChange({ ...autoLayout, gap: v })} />
-      <NumberInput label="Pad" value={autoLayout.padding ?? 0} onChange={v => onChange({ ...autoLayout, padding: v })} />
+      <NumberInput label="Pad" value={Array.isArray(autoLayout.padding) ? autoLayout.padding[0] : autoLayout.padding ?? 0} onChange={v => onChange({ ...autoLayout, padding: v })} />
       <SelectInput label="Align" value={autoLayout.align_items ?? "start"} options={["start", "center", "end", "stretch"]} onChange={v => onChange({ ...autoLayout, align_items: v as AutoLayoutSpec["align_items"] })} />
       <SelectInput label="Justify" value={autoLayout.justify_content ?? "start"} options={["start", "center", "end", "space-between"]} onChange={v => onChange({ ...autoLayout, justify_content: v as AutoLayoutSpec["justify_content"] })} />
       <button

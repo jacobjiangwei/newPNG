@@ -9,9 +9,14 @@ interface Message {
 
 interface ChatPanelProps {
   onYamlGenerated: (yaml: string) => void;
+  currentYaml?: string;
+  selectionContext?: {
+    label: string;
+    element: unknown;
+  } | null;
 }
 
-export default function ChatPanel({ onYamlGenerated }: ChatPanelProps) {
+export default function ChatPanel({ onYamlGenerated, currentYaml, selectionContext }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,7 +41,11 @@ export default function ChatPanel({ onYamlGenerated }: ChatPanelProps) {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: [...messages, userMsg] }),
+          body: JSON.stringify({
+            messages: [...messages, userMsg],
+            currentYaml,
+            selectionContext,
+          }),
         });
 
         if (!res.ok) {
@@ -82,7 +91,7 @@ export default function ChatPanel({ onYamlGenerated }: ChatPanelProps) {
         setLoading(false);
       }
     },
-    [input, loading, messages, onYamlGenerated]
+    [input, loading, messages, onYamlGenerated, currentYaml, selectionContext]
   );
 
   return (
@@ -93,9 +102,13 @@ export default function ChatPanel({ onYamlGenerated }: ChatPanelProps) {
       <div className="flex-1 overflow-auto p-3 space-y-3">
         {messages.length === 0 && (
           <div className="space-y-2 text-sm">
-            <p className="text-zinc-300 font-medium">Generate editable design source, not a flat bitmap.</p>
+            <p className="text-zinc-300 font-medium">
+              {selectionContext ? "Edit the selected object with AI." : "Generate editable design source, not a flat bitmap."}
+            </p>
             <p className="text-zinc-500">
-              Ask for a poster, card, icon, product mockup, or visual system. Claude returns npng YAML that stays editable and exports sharply at any scale.
+              {selectionContext
+                ? `Selected: ${selectionContext.label}. Ask for a local change like "make it glassy" or "turn this into a blue gradient button".`
+                : "Ask for a poster, card, icon, product mockup, or visual system. Claude returns npng YAML that stays editable and exports sharply at any scale."}
             </p>
             <p className="text-zinc-600 text-xs">
               Try: &quot;Design a glassmorphism launch card for an AI design tool.&quot;
@@ -125,7 +138,7 @@ export default function ChatPanel({ onYamlGenerated }: ChatPanelProps) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Describe the design you want..."
+          placeholder={selectionContext ? "Describe how to change the selection..." : "Describe the design you want..."}
           className="flex-1 bg-zinc-800 text-zinc-200 px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
           disabled={loading}
         />

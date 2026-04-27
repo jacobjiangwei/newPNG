@@ -27,6 +27,8 @@ All elements share common design-object fields:
 - locked: boolean (default false)
 - opacity: 0-1 (default 1)
 - transform: {translate, rotate, scale, origin}
+- blend_mode: per-object blend mode
+- filters/effects: per-object visual effects such as blur, drop-shadow, inner-shadow, outer-glow, inner-glow
 - constraints: optional Figma-like resize constraints
 - layout_item: optional auto-layout child behavior {grow, shrink, align_self}
 
@@ -48,9 +50,28 @@ Stroke: {color, width, dash: [dashLen, gapLen], cap: butt|round|square, join: mi
 
 Transform: {translate: [x, y], rotate: degrees, scale: number or [sx, sy], origin: [ox, oy]}
 
-When the user asks you to create a design, respond with a YAML code block containing valid npng. Always wrap your npng output in \`\`\`yaml ... \`\`\` code fences.
+When the user asks you to create or edit a design, respond with a YAML code block containing valid npng. Always wrap your npng output in \`\`\`yaml ... \`\`\` code fences.
 
 Make the result feel like an editable design file: use semantic layer names, stable object ids, object names, grouped structure, text boxes, reusable defs where helpful, gradients, multiple layers, and precise composition. Prefer simple editable shapes over huge opaque paths when possible, because users will refine the design visually and in YAML.`;
+
+function buildContextPrompt(currentYaml?: string, selectionContext?: unknown): string {
+  if (!currentYaml) return "";
+  return `
+
+Current document editing mode:
+- The user is editing an existing npng document.
+- Return the full updated npng YAML document, not a prose patch.
+- Preserve existing IDs, names, layer structure, and unrelated objects unless the user explicitly asks for broader changes.
+- If a selected object is provided, treat the user's request as a local edit to that selection by default.
+
+Selected object context:
+${selectionContext ? JSON.stringify(selectionContext, null, 2) : "No selected object."}
+
+Current npng YAML:
+\`\`\`yaml
+${currentYaml}
+\`\`\``;
+}
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -58,7 +79,7 @@ export async function POST(req: NextRequest) {
     return new Response("ANTHROPIC_API_KEY not set", { status: 500 });
   }
 
-  const { messages } = await req.json();
+  const { messages, currentYaml, selectionContext } = await req.json();
 
   const anthropicMessages = messages.map((m: { role: string; content: string }) => ({
     role: m.role,
@@ -75,7 +96,7 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
+      system: `${SYSTEM_PROMPT}${buildContextPrompt(currentYaml, selectionContext)}`,
       messages: anthropicMessages,
       stream: true,
     }),

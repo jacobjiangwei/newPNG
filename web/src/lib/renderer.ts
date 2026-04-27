@@ -3,7 +3,7 @@ import { tracePath } from "./pathParser";
 import { computeLayout } from "./autoLayout";
 import { resolveInstance } from "./componentSystem";
 import { getBoundingBox, mergeBoundingBoxes, type BoundingBox } from "./hitTest";
-import type { NpngDocument, NpngElement, FillSpec, StrokeSpec, TransformSpec, FilterSpec, DefItem, ArrowEndType, ComponentDef, FillLayer, StrokeLayer } from "./types";
+import type { NpngDocument, NpngElement, FillSpec, StrokeSpec, TransformSpec, FilterSpec, DefItem, ArrowEndType, ComponentDef, FillLayer, StrokeLayer, EffectSpec } from "./types";
 
 const imageCache = new Map<string, HTMLImageElement>();
 const canvasRenderVersions = new WeakMap<HTMLCanvasElement, number>();
@@ -206,6 +206,73 @@ function applyStroke(ctx: CanvasRenderingContext2D, strokeSpec: StrokeSpec): voi
   ctx.stroke();
 }
 
+function colorWithOpacity(color: string, opacity?: number): string {
+  const parsed = parseColor(color);
+  if (!parsed) return color;
+  if (opacity !== undefined) parsed[3] *= Math.max(0, Math.min(1, opacity));
+  return rgbaString(parsed);
+}
+
+function buildCanvasFilter(
+  filters?: FilterSpec[],
+  effects?: EffectSpec[],
+  pixelRatio = 1,
+  adjustments?: Extract<NpngElement, { type: "image" }>["adjustments"]
+): string {
+  const parts: string[] = [];
+
+  if (adjustments) {
+    if (adjustments.brightness !== undefined) parts.push(`brightness(${100 + adjustments.brightness}%)`);
+    if (adjustments.contrast !== undefined) parts.push(`contrast(${100 + adjustments.contrast}%)`);
+    if (adjustments.saturation !== undefined) parts.push(`saturate(${100 + adjustments.saturation}%)`);
+    if (adjustments.hue_rotate !== undefined) parts.push(`hue-rotate(${adjustments.hue_rotate}deg)`);
+  }
+
+  for (const filter of filters ?? []) {
+    if (filter.type === "blur" && filter.radius) {
+      parts.push(`blur(${filter.radius * pixelRatio}px)`);
+    } else if (filter.type === "drop-shadow") {
+      parts.push(`drop-shadow(${(filter.dx ?? 3) * pixelRatio}px ${(filter.dy ?? 3) * pixelRatio}px ${(filter.radius ?? 3) * pixelRatio}px ${filter.color ?? "#00000080"})`);
+    }
+  }
+
+  for (const effect of effects ?? []) {
+    if (effect.type === "blur" && effect.radius) {
+      parts.push(`blur(${effect.radius * pixelRatio}px)`);
+    } else if (effect.type === "drop-shadow") {
+      parts.push(`drop-shadow(${(effect.dx ?? 0) * pixelRatio}px ${(effect.dy ?? 4) * pixelRatio}px ${(effect.radius ?? 8) * pixelRatio}px ${colorWithOpacity(effect.color ?? "#00000066", effect.opacity)})`);
+    } else if (effect.type === "outer-glow") {
+      parts.push(`drop-shadow(0px 0px ${(effect.radius ?? 8) * pixelRatio}px ${colorWithOpacity(effect.color ?? "#FFFFFF80", effect.opacity)})`);
+    }
+  }
+
+  return parts.length > 0 ? parts.join(" ") : "none";
+}
+
+function applyInnerEffects(
+  ctx: CanvasRenderingContext2D,
+  effects: EffectSpec[] | undefined,
+  buildPath: () => void
+): void {
+  const innerEffects = (effects ?? []).filter((effect) => effect.type === "inner-shadow" || effect.type === "inner-glow");
+  for (const effect of innerEffects) {
+    ctx.save();
+    buildPath();
+    ctx.clip();
+    ctx.globalAlpha *= effect.opacity ?? 1;
+    ctx.globalCompositeOperation = toCompositeOperation(effect.blend_mode ?? "normal");
+    ctx.shadowColor = colorWithOpacity(effect.color ?? (effect.type === "inner-glow" ? "#FFFFFF80" : "#00000066"));
+    ctx.shadowBlur = effect.radius ?? 8;
+    ctx.shadowOffsetX = effect.type === "inner-glow" ? 0 : effect.dx ?? 0;
+    ctx.shadowOffsetY = effect.type === "inner-glow" ? 0 : effect.dy ?? 2;
+    ctx.strokeStyle = colorWithOpacity(effect.color ?? (effect.type === "inner-glow" ? "#FFFFFF66" : "#00000055"), effect.opacity);
+    ctx.lineWidth = Math.max(1, ((effect.radius ?? 8) + (effect.spread ?? 0)) * 1.6);
+    buildPath();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 function applyTransform(ctx: CanvasRenderingContext2D, t: TransformSpec): void {
   if (t.translate) ctx.translate(t.translate[0], t.translate[1]);
   if (t.rotate !== undefined) ctx.rotate((t.rotate * Math.PI) / 180);
@@ -399,6 +466,25 @@ function getArrowPadding(elem: NpngElement): number {
   return Math.max(8, getMaxStrokeWidth(elem) * 4);
 }
 
+function getEffectPadding(filters?: FilterSpec[], effects?: EffectSpec[]): number {
+  let padding = 0;
+  for (const filter of filters ?? []) {
+    if (filter.type === "blur") padding = Math.max(padding, (filter.radius ?? 0) * 2);
+    if (filter.type === "drop-shadow") {
+      padding = Math.max(padding, Math.abs(filter.dx ?? 3) + Math.abs(filter.dy ?? 3) + (filter.radius ?? 3) * 2);
+    }
+  }
+  for (const effect of effects ?? []) {
+    if (effect.type === "blur" || effect.type === "outer-glow") {
+      padding = Math.max(padding, (effect.radius ?? 0) * 2 + (effect.spread ?? 0));
+    }
+    if (effect.type === "drop-shadow") {
+      padding = Math.max(padding, Math.abs(effect.dx ?? 0) + Math.abs(effect.dy ?? 4) + (effect.radius ?? 8) * 2 + (effect.spread ?? 0));
+    }
+  }
+  return padding;
+}
+
 function getImagePaintBounds(elem: Extract<NpngElement, { type: "image" }>): BoundingBox {
   const cachedImage = elem.href ? imageCache.get(elem.href) : null;
   const fallbackWidth = cachedImage?.complete && cachedImage.naturalWidth > 0 ? cachedImage.naturalWidth : 100;
@@ -434,7 +520,8 @@ function getElementPaintBounds(
   }
   if (elem.type === "component-instance") {
     const resolved = components ? resolveInstance(elem, components) : null;
-    return resolved ? getElementPaintBounds(resolved, defs, components) : null;
+    const resolvedBounds = resolved ? getElementPaintBounds(resolved, defs, components) : null;
+    return resolvedBounds ? transformBounds(resolvedBounds, elem.transform) : null;
   }
   if (elem.type === "image") {
     return getImagePaintBounds(elem);
@@ -478,7 +565,10 @@ function isContainerElement(elem: NpngElement): elem is ContainerElement {
 }
 
 function shouldIsolateContainer(elem: ContainerElement): boolean {
-  return elem.opacity !== undefined && elem.opacity < 1;
+  return (elem.opacity !== undefined && elem.opacity < 1)
+    || !!elem.blend_mode
+    || !!elem.filters?.length
+    || !!elem.effects?.length;
 }
 
 function wrapTextLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -587,7 +677,7 @@ function renderIsolatedContainer(
 ): void {
   const bounds = getContainerIsolationBounds(elem, defs, components);
   if (!bounds || bounds.width <= 0 || bounds.height <= 0) return;
-  const paddedBounds = expandBox(bounds, 2);
+  const paddedBounds = expandBox(bounds, Math.max(2, getEffectPadding(elem.filters, elem.effects)));
   const offscreen = document.createElement("canvas");
   offscreen.width = Math.max(1, Math.ceil(paddedBounds.width * pixelRatio));
   offscreen.height = Math.max(1, Math.ceil(paddedBounds.height * pixelRatio));
@@ -606,6 +696,9 @@ function renderIsolatedContainer(
 
   ctx.save();
   ctx.globalAlpha *= elem.opacity ?? 1;
+  if (elem.blend_mode) ctx.globalCompositeOperation = toCompositeOperation(elem.blend_mode);
+  const elementFilter = buildCanvasFilter(elem.filters, elem.effects, pixelRatio);
+  if (elementFilter !== "none") ctx.filter = elementFilter;
   ctx.drawImage(offscreen, paddedBounds.x, paddedBounds.y, paddedBounds.width, paddedBounds.height);
   ctx.restore();
 }
@@ -642,6 +735,21 @@ function renderElement(
   }
 
   if (elemOpacity < 1.0) ctx.globalAlpha *= elemOpacity;
+  if (elem.blend_mode) ctx.globalCompositeOperation = toCompositeOperation(elem.blend_mode);
+
+  if (elem.clip_path) {
+    ctx.beginPath();
+    tracePath(ctx, elem.clip_path);
+    ctx.clip();
+  }
+
+  const elementFilter = buildCanvasFilter(
+    elem.filters,
+    elem.effects,
+    pixelRatio,
+    elem.type === "image" ? elem.adjustments : undefined
+  );
+  if (elementFilter !== "none") ctx.filter = elementFilter;
 
   if (elem.type === "rect") {
     const e = elem;
@@ -663,6 +771,7 @@ function renderElement(
     };
     buildPath();
     renderFillsAndStrokes(ctx, e, () => { buildPath(); ctx.fill(); }, () => { buildPath(); ctx.stroke(); });
+    applyInnerEffects(ctx, e.effects, buildPath);
     // If no fills/strokes arrays, fallback was already handled
     if (!e.fills && !e.strokes) {
       // already handled by renderFillsAndStrokes fallback
@@ -676,6 +785,7 @@ function renderElement(
     };
     buildPath();
     renderFillsAndStrokes(ctx, e, () => { buildPath(); ctx.fill(); }, () => { buildPath(); ctx.stroke(); });
+    applyInnerEffects(ctx, e.effects, buildPath);
   } else if (elem.type === "line") {
     const e = elem;
     ctx.beginPath();
@@ -767,9 +877,9 @@ function renderElement(
         }
         curX += w;
       }
-    } else {
-      const content = e.content ?? "";
-      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      } else {
+        const content = e.content ?? "";
+        ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
       const fill = e.fill as FillSpec | undefined;
       let shouldFillText = true;
       if (fill === undefined) {
@@ -779,21 +889,58 @@ function renderElement(
       } else if (!applyFill(ctx, fill)) {
         ctx.fillStyle = "black";
       }
-      const drawText = (line: string, lineX: number, lineY: number) => {
-        strokeText(line, lineX, lineY);
-        if (shouldFillText) ctx.fillText(line, lineX, lineY);
-      };
+        const letterSpacing = e.letter_spacing ?? 0;
+        const measureLine = (line: string) => ctx.measureText(line).width + Math.max(0, Array.from(line).length - 1) * letterSpacing;
+        const paintText = (line: string, lineX: number, lineY: number, mode: "fill" | "stroke") => {
+          if (!letterSpacing) {
+            if (mode === "fill") ctx.fillText(line, lineX, lineY);
+            else ctx.strokeText(line, lineX, lineY);
+            return;
+          }
+          let cursor = lineX;
+          const chars = Array.from(line);
+          for (const char of chars) {
+            if (mode === "fill") ctx.fillText(char, cursor, lineY);
+            else ctx.strokeText(char, cursor, lineY);
+            cursor += ctx.measureText(char).width + letterSpacing;
+          }
+        };
+        const drawText = (line: string, lineX: number, lineY: number) => {
+          const alignedX = letterSpacing && align !== "left"
+            ? lineX - (align === "center" ? measureLine(line) / 2 : measureLine(line))
+            : lineX;
+          const oldAlign = ctx.textAlign;
+          if (letterSpacing) ctx.textAlign = "left";
+          if (e.strokes && e.strokes.length > 0) {
+            for (const stroke of e.strokes) {
+              ctx.save();
+              if (stroke.opacity !== undefined) ctx.globalAlpha *= stroke.opacity;
+              applyStrokeStyle(ctx, stroke);
+              paintText(line, alignedX, lineY, "stroke");
+              ctx.restore();
+            }
+          } else if (e.stroke) {
+            applyStrokeStyle(ctx, e.stroke);
+            paintText(line, alignedX, lineY, "stroke");
+          }
+          if (shouldFillText) paintText(line, alignedX, lineY, "fill");
+          ctx.textAlign = oldAlign;
+        };
 
-      if (e.width && e.width > 0) {
-        const lineHeight = getTextLineHeight(fontSize, e.line_height);
-        const lines = wrapTextLines(ctx, content, e.width);
-        ctx.textAlign = align as CanvasTextAlign;
-        ctx.textBaseline = "top";
-        const lineX = align === "center" ? x + e.width / 2 : align === "right" ? x + e.width : x;
-        lines.forEach((line, index) => {
-          drawText(line, lineX, y + index * lineHeight);
-        });
-      } else {
+        if (e.width && e.width > 0) {
+          const lineHeight = getTextLineHeight(fontSize, e.line_height);
+          const paragraphSpacing = e.paragraph_spacing ?? 0;
+          const lines = wrapTextLines(ctx, content, e.width);
+          ctx.textAlign = align as CanvasTextAlign;
+          ctx.textBaseline = "top";
+          const lineX = align === "center" ? x + e.width / 2 : align === "right" ? x + e.width : x;
+          let offsetY = 0;
+          lines.forEach((line, index) => {
+            drawText(line, lineX, y + offsetY);
+            offsetY += lineHeight;
+            if (line === "" && index < lines.length - 1) offsetY += paragraphSpacing;
+          });
+        } else {
         ctx.textAlign = align as CanvasTextAlign;
         ctx.textBaseline = "alphabetic";
         drawText(content, x, y);
@@ -810,6 +957,7 @@ function renderElement(
       () => { ctx.beginPath(); tracePath(ctx, d); ctx.fill(fillRule as CanvasFillRule); },
       () => { ctx.beginPath(); tracePath(ctx, d); ctx.stroke(); }
     );
+    applyInnerEffects(ctx, e.effects, () => { ctx.beginPath(); tracePath(ctx, d); });
   } else if (elem.type === "group") {
     renderGroupContents(ctx, elem, defs, components, onAsyncResourceLoaded, pixelRatio);
   } else if (elem.type === "use") {
@@ -835,7 +983,7 @@ function renderElement(
     if (href) {
       const img = loadImage(href, onAsyncResourceLoaded);
       if (img) {
-        ctx.drawImage(img, e.x ?? 0, e.y ?? 0, e.width ?? img.naturalWidth, e.height ?? img.naturalHeight);
+        drawImageElement(ctx, e, img);
       }
     }
   } else if (elem.type === "frame") {
@@ -850,6 +998,56 @@ function renderElement(
     }
   }
 
+  ctx.restore();
+}
+
+function buildRoundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number): void {
+  const r = Math.min(Math.max(0, radius), Math.abs(w) / 2, Math.abs(h) / 2);
+  ctx.beginPath();
+  if (r <= 0) {
+    ctx.rect(x, y, w, h);
+    return;
+  }
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawImageElement(
+  ctx: CanvasRenderingContext2D,
+  e: Extract<NpngElement, { type: "image" }>,
+  img: HTMLImageElement
+): void {
+  const x = e.x ?? 0;
+  const y = e.y ?? 0;
+  const w = e.width ?? img.naturalWidth;
+  const h = e.height ?? img.naturalHeight;
+  const fit = e.fit ?? "fill";
+  const iw = img.naturalWidth || w;
+  const ih = img.naturalHeight || h;
+
+  let dx = x;
+  let dy = y;
+  let dw = w;
+  let dh = h;
+  if (fit === "contain" || fit === "cover") {
+    const scale = fit === "contain" ? Math.min(w / iw, h / ih) : Math.max(w / iw, h / ih);
+    dw = iw * scale;
+    dh = ih * scale;
+    dx = x + (w - dw) / 2;
+    dy = y + (h - dh) / 2;
+  } else if (fit === "none") {
+    dw = iw;
+    dh = ih;
+  }
+
+  ctx.save();
+  buildRoundedRectPath(ctx, x, y, w, h, e.border_radius ?? 0);
+  ctx.clip();
+  ctx.drawImage(img, dx, dy, dw, dh);
   ctx.restore();
 }
 

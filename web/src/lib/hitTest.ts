@@ -1,6 +1,7 @@
 import type { NpngDocument, NpngElement, TransformSpec } from "./types";
 import type { ElementAddress } from "./editorState";
 import { parsePath } from "./pathParser";
+import { childElements, getElementAtAddress, makeAddress } from "./elementTree";
 
 export interface BoundingBox {
   x: number;
@@ -353,7 +354,7 @@ export function mergeBoundingBoxes(boxes: BoundingBox[]): BoundingBox | null {
 
 export function getSelectionBoundingBox(doc: NpngDocument, selection: ElementAddress[]): BoundingBox | null {
   const boxes = selection.flatMap((address) => {
-    const element = doc.layers?.[address.layerIndex]?.elements?.[address.elementIndex];
+    const element = getElementAtAddress(doc, address);
     return element ? [getBoundingBox(element)] : [];
   });
   return mergeBoundingBoxes(boxes);
@@ -367,17 +368,24 @@ export function hitTest(doc: NpngDocument, px: number, py: number): ElementAddre
 export function hitTestAll(doc: NpngDocument, px: number, py: number): ElementAddress[] {
   if (!doc.layers) return [];
   const results: ElementAddress[] = [];
+  const visit = (layerIndex: number, elements: NpngElement[] | undefined, prefix: number[]) => {
+    for (let elementIndex = (elements?.length ?? 0) - 1; elementIndex >= 0; elementIndex--) {
+      const element = elements?.[elementIndex];
+      if (!element || element.visible === false || element.locked) continue;
+      const path = [...prefix, elementIndex];
+      const children = childElements(element);
+      if (children?.length && !element.transform) visit(layerIndex, children, path);
+      const box = getBoundingBox(element);
+      if (pointInBox(px, py, box)) {
+        results.push(makeAddress(layerIndex, path));
+      }
+    }
+  };
+
   for (let li = doc.layers.length - 1; li >= 0; li--) {
     const layer = doc.layers[li];
     if (layer.visible === false || layer.locked) continue;
-    const elements = layer.elements ?? [];
-    for (let ei = elements.length - 1; ei >= 0; ei--) {
-      if (elements[ei].visible === false || elements[ei].locked) continue;
-      const box = getBoundingBox(elements[ei]);
-      if (pointInBox(px, py, box)) {
-        results.push({ layerIndex: li, elementIndex: ei });
-      }
-    }
+    visit(li, layer.elements, []);
   }
   return results;
 }
@@ -385,16 +393,23 @@ export function hitTestAll(doc: NpngDocument, px: number, py: number): ElementAd
 export function hitTestBox(doc: NpngDocument, box: BoundingBox): ElementAddress[] {
   if (!doc.layers) return [];
   const results: ElementAddress[] = [];
+  const visit = (layerIndex: number, elements: NpngElement[] | undefined, prefix: number[]) => {
+    for (let elementIndex = 0; elementIndex < (elements?.length ?? 0); elementIndex++) {
+      const element = elements?.[elementIndex];
+      if (!element || element.visible === false || element.locked) continue;
+      const path = [...prefix, elementIndex];
+      if (boxesIntersect(getBoundingBox(element), box)) {
+        results.push(makeAddress(layerIndex, path));
+      }
+      const children = childElements(element);
+      if (children?.length && !element.transform) visit(layerIndex, children, path);
+    }
+  };
+
   for (let li = 0; li < doc.layers.length; li++) {
     const layer = doc.layers[li];
     if (layer.visible === false || layer.locked) continue;
-    const elements = layer.elements ?? [];
-    for (let ei = 0; ei < elements.length; ei++) {
-      if (elements[ei].visible === false || elements[ei].locked) continue;
-      if (boxesIntersect(getBoundingBox(elements[ei]), box)) {
-        results.push({ layerIndex: li, elementIndex: ei });
-      }
-    }
+    visit(li, layer.elements, []);
   }
   return results;
 }

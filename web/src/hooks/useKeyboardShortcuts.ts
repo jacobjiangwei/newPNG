@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { EditorAction, ElementAddress } from "../lib/editorState";
 import type { NpngDocument } from "../lib/types";
 import { applyMove, getOrigProps } from "../lib/canvasInteraction";
+import { compareAddressForRemoval, dropDescendantAddresses, getElementAtAddress } from "../lib/elementTree";
 
 export function useKeyboardShortcuts(
   dispatch: React.Dispatch<EditorAction>,
@@ -66,7 +67,7 @@ export function useKeyboardShortcuts(
         if (selection.length > 0) {
           e.preventDefault();
           // Delete in reverse order to maintain indices
-          const sorted = [...selection].sort((a, b) => b.elementIndex - a.elementIndex || b.layerIndex - a.layerIndex);
+          const sorted = dropDescendantAddresses(selection).sort(compareAddressForRemoval);
           for (const addr of sorted) {
             dispatch({ type: "DELETE_ELEMENT", address: addr });
           }
@@ -84,11 +85,8 @@ export function useKeyboardShortcuts(
         else if (e.key === "ArrowDown") dy = delta;
         if (dx !== 0 || dy !== 0) {
           e.preventDefault();
-          const layers = parsedDoc.layers;
-          if (!layers) return;
           const updates = selection.flatMap((sel) => {
-            const layer = layers[sel.layerIndex];
-            const elem = layer?.elements?.[sel.elementIndex];
+            const elem = getElementAtAddress(parsedDoc, sel);
             if (!elem) return [];
             const props = applyMove(elem, dx, dy, getOrigProps(elem));
             return Object.keys(props).length > 0 ? [{ address: sel, props }] : [];

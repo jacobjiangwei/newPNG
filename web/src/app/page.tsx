@@ -11,6 +11,7 @@ import CanvasPreview from "../components/CanvasPreview";
 import PropertyPanel from "../components/PropertyPanel";
 import YamlEditor from "../components/YamlEditor";
 import { preloadNpngImages, renderNpng } from "../lib/renderer";
+import { getElementAtAddress } from "../lib/elementTree";
 
 const SATISFACTION_PEACH_YAML = `npng: "0.4"
 canvas:
@@ -1373,14 +1374,14 @@ function LandingPage() {
 
 export function DesignStudio() {
   const [state, dispatch] = useReducer(editorReducer, DEFAULT_YAML, createInitialState);
-  const [yamlOpen, setYamlOpen] = useState(true);
+  const [leftTab, setLeftTab] = useState<"ai" | "layers" | "source">("ai");
   const [exportScale, setExportScale] = useState(4);
 
   const handleFitToScreen = useCallback(() => {
     const cw = state.parsedDoc?.canvas?.width ?? 600;
     const ch = state.parsedDoc?.canvas?.height ?? 400;
-    // Approximate viewport: window minus sidebars
-    const vw = Math.max(200, window.innerWidth - 480);
+    // Approximate viewport: window minus Figma-like sidebars
+    const vw = Math.max(200, window.innerWidth - 600);
     const vh = Math.max(200, window.innerHeight - 80);
     const zoom = Math.min(vw / cw, vh / ch) * 0.9;
     dispatch({ type: "SET_ZOOM", zoom });
@@ -1456,11 +1457,16 @@ export function DesignStudio() {
 
   const firstSel = state.selection.length === 1 ? state.selection[0] : null;
   const selectedElement = firstSel && state.parsedDoc?.layers
-    ? state.parsedDoc.layers[firstSel.layerIndex]?.elements?.[firstSel.elementIndex] ?? null
+    ? getElementAtAddress(state.parsedDoc, firstSel) ?? null
     : null;
+  const leftTabs: { id: typeof leftTab; label: string; hint: string }[] = [
+    { id: "ai", label: "AI", hint: "Prompt and patch" },
+    { id: "layers", label: "Layers", hint: "Object tree" },
+    { id: "source", label: "Source", hint: "npng YAML" },
+  ];
 
   return (
-    <div className="flex flex-col h-screen bg-[#121212] text-zinc-200">
+    <div className="flex flex-col h-screen bg-[#181818] text-zinc-200">
       <Toolbar
         activeTool={state.activeTool}
         zoom={state.zoom}
@@ -1476,44 +1482,116 @@ export function DesignStudio() {
         examples={EXAMPLES}
         canUndo={state.historyIndex > 0}
         canRedo={state.historyIndex < state.history.length - 1}
+        showExportControls={false}
       />
       <div className="flex flex-1 overflow-hidden">
-        {/* AI + Layer Panel */}
-        <div className="w-[260px] shrink-0 border-r border-zinc-700 overflow-hidden flex flex-col">
-          <div className="h-[320px] shrink-0 border-b border-zinc-700 overflow-hidden">
-            <ChatPanel onYamlGenerated={handleLoadExample} />
+        {/* Left workspace panel: AI / Layers / Source */}
+        <aside className="w-[292px] shrink-0 border-r border-zinc-700/80 bg-[#232323] overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-zinc-700/80">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-zinc-100">Untitled npng</div>
+                <div className="mt-0.5 text-[11px] text-blue-300/80">AI-native editable design</div>
+              </div>
+              <div className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] text-zinc-400">
+                {state.parsedDoc?.npng ?? "npng"}
+              </div>
+            </div>
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <LayerPanel doc={state.parsedDoc} selection={state.selection} dispatch={dispatch} />
+          <div className="grid grid-cols-3 gap-1 border-b border-zinc-700/80 p-2">
+            {leftTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setLeftTab(tab.id)}
+                className={`rounded-md px-2 py-1.5 text-left transition ${
+                  leftTab === tab.id
+                    ? "bg-zinc-700/90 text-white"
+                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                }`}
+                title={tab.hint}
+              >
+                <div className="text-xs font-medium">{tab.label}</div>
+                <div className="text-[9px] text-zinc-500">{tab.hint}</div>
+              </button>
+            ))}
           </div>
-        </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {leftTab === "ai" && (
+              <div className="h-full overflow-hidden">
+                <ChatPanel
+                  onYamlGenerated={handleLoadExample}
+                  currentYaml={state.yamlText}
+                  selectionContext={selectedElement && firstSel ? {
+                    label: selectedElement.name ?? `${selectedElement.type} #${firstSel.elementIndex + 1}`,
+                    element: selectedElement,
+                  } : null}
+                />
+              </div>
+            )}
+            {leftTab === "layers" && (
+              <LayerPanel doc={state.parsedDoc} selection={state.selection} dispatch={dispatch} />
+            )}
+            {leftTab === "source" && (
+              <YamlEditor value={state.yamlText} onChange={handleYamlChange} />
+            )}
+          </div>
+        </aside>
 
         {/* Canvas */}
-        <div className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden bg-[#191919]">
           <CanvasPreview
             yamlText={state.yamlText}
             parsedDoc={state.parsedDoc}
             selection={state.selection}
-             activeTool={state.activeTool}
-             dragState={state.dragState}
-             drawState={state.drawState}
-             penState={state.penState}
-             polyState={state.polyState}
-             zoom={state.zoom}
+            activeTool={state.activeTool}
+            dragState={state.dragState}
+            drawState={state.drawState}
+            penState={state.penState}
+            polyState={state.polyState}
+            zoom={state.zoom}
             panX={state.panX}
             panY={state.panY}
             showGrid={state.showGrid}
             gridSize={state.gridSize}
             dispatch={dispatch}
           />
-        </div>
+        </main>
 
-        {/* Right sidebar: Property Inspector + YAML Editor */}
-        <div className="w-[280px] shrink-0 border-l border-zinc-700 flex flex-col overflow-hidden">
-          <div className="px-3 py-2 text-xs font-semibold text-zinc-400 border-b border-zinc-700 bg-[#1e1e1e]">
-            Properties
+        {/* Right sidebar: Figma-like Design inspector */}
+        <aside className="w-[300px] shrink-0 border-l border-zinc-700/80 bg-[#252525] flex flex-col overflow-hidden">
+          <div className="border-b border-zinc-700/80 px-3 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex rounded-lg bg-zinc-900 p-0.5">
+                <button className="rounded-md bg-zinc-700 px-3 py-1 text-xs font-semibold text-white">
+                  Design
+                </button>
+                <button className="rounded-md px-3 py-1 text-xs text-zinc-500" disabled>
+                  Prototype
+                </button>
+              </div>
+              <div className="text-xs text-zinc-500">{Math.round(state.zoom * 100)}%</div>
+            </div>
           </div>
-          <div className="flex-1 overflow-auto bg-[#1e1e1e]">
+
+          <div className="border-b border-zinc-700/80 px-4 py-3 text-xs">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-semibold text-zinc-200">Page</span>
+              <span className="text-zinc-500">{state.parsedDoc?.canvas?.width ?? 0} x {state.parsedDoc?.canvas?.height ?? 0}</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-md bg-zinc-800 px-2 py-1.5 text-zinc-300">
+              <span
+                className="h-4 w-4 rounded border border-zinc-600"
+                style={{ background: state.parsedDoc?.canvas?.background ?? "#1E1E1E" }}
+              />
+              <span className="font-mono text-[11px]">{state.parsedDoc?.canvas?.background ?? "#1E1E1E"}</span>
+              <span className="ml-auto text-zinc-500">100%</span>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-auto">
+            <div className="border-b border-zinc-700/80 px-3 py-2 text-xs font-semibold text-zinc-400">
+              {selectedElement ? "Selection" : "Design"}
+            </div>
             <PropertyPanel
               element={selectedElement}
               address={firstSel}
@@ -1523,22 +1601,37 @@ export function DesignStudio() {
             />
           </div>
 
-          {/* Collapsible YAML Editor */}
-          <div className="border-t border-zinc-700">
+          <div className="border-t border-zinc-700/80 p-3">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="font-semibold text-zinc-200">Export</span>
+              <span className="text-zinc-500">PNG / Source</span>
+            </div>
+            <div className="mb-2 grid grid-cols-[1fr_1.2fr] gap-2">
+              <select
+                value={exportScale}
+                onChange={(e) => setExportScale(Number(e.target.value))}
+                className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-300"
+                title="PNG export scale"
+              >
+                <option value={1}>1x</option>
+                <option value={2}>2x</option>
+                <option value={4}>4x</option>
+              </select>
+              <button
+                onClick={handleExportPng}
+                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+              >
+                Export PNG
+              </button>
+            </div>
             <button
-              onClick={() => setYamlOpen(!yamlOpen)}
-              className="w-full px-3 py-2 text-xs font-semibold text-zinc-400 bg-[#1e1e1e] hover:bg-zinc-800 text-left flex items-center gap-1"
+              onClick={handleDownloadNpng}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700"
             >
-              <span className={`transition-transform ${yamlOpen ? "rotate-90" : ""}`}>▶</span>
-              npng Source
+              Download npng source
             </button>
-            {yamlOpen && (
-              <div className="h-[300px]">
-                <YamlEditor value={state.yamlText} onChange={handleYamlChange} />
-              </div>
-            )}
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );

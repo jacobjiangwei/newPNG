@@ -1,5 +1,6 @@
 import type { ElementAddress } from "./editorState";
 import type { NpngDocument, NpngElement } from "./types";
+import { addressPath, getElementAtAddress } from "./elementTree";
 
 function truncate(value: string, maxLength = 28): string {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
@@ -36,8 +37,8 @@ export function getElementShortLabel(element: NpngElement, elementIndex: number)
 
 export function getElementDisplayName(doc: NpngDocument, address: ElementAddress): string {
   const layer = doc.layers?.[address.layerIndex];
-  const element = layer?.elements?.[address.elementIndex];
+  const element = getElementAtAddress(doc, address);
   const layerName = layer?.name || `Layer ${address.layerIndex + 1}`;
-  if (!element) return `${layerName} / missing #${address.elementIndex + 1}`;
+  if (!element) return `${layerName} / missing #${addressPath(address).join(".")}`;
   return `${layerName} / ${getElementShortLabel(element, address.elementIndex)}`;
 }

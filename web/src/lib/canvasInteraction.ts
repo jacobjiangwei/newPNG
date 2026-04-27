@@ -1,6 +1,7 @@
 import type { BoundingBox } from "./hitTest";
 import type { NpngElement, TransformSpec } from "./types";
 import { parsePath } from "./pathParser";
+import { applyConstraints } from "./constraints";
 
 type InteractiveElement = NpngElement & {
   x?: number;
@@ -237,7 +238,7 @@ export function applyMove(element: NpngElement, dx: number, dy: number, origProp
 
 export function applyResize(
   element: NpngElement, handle: HandleId, dx: number, dy: number, origProps: Record<string, number>
-): Record<string, number> {
+): Record<string, unknown> {
   switch (element.type) {
     case "rect":
     case "image":
@@ -250,7 +251,42 @@ export function applyResize(
       if (handle.includes("s")) { h += dy; }
       if (w < 1) w = 1;
       if (h < 1) h = 1;
-      return { x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(h) };
+      const nextFrame = { x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(h) };
+      if (element.type === "frame" && element.children?.length) {
+        const oldParent = {
+          x: origProps.x ?? element.x ?? 0,
+          y: origProps.y ?? element.y ?? 0,
+          width: origProps.width ?? element.width ?? 0,
+          height: origProps.height ?? element.height ?? 0,
+        };
+        const children = element.children.map((child) => {
+          if (
+            child.constraints &&
+            "x" in child &&
+            "y" in child &&
+            "width" in child &&
+            "height" in child &&
+            typeof child.x === "number" &&
+            typeof child.y === "number" &&
+            typeof child.width === "number" &&
+            typeof child.height === "number"
+          ) {
+            const childBounds = {
+              x: child.x,
+              y: child.y,
+              width: child.width,
+              height: child.height,
+            };
+            return {
+              ...child,
+              ...applyConstraints(childBounds, oldParent, nextFrame, child.constraints),
+            };
+          }
+          return child;
+        });
+        return { ...nextFrame, children };
+      }
+      return nextFrame;
     }
     case "ellipse": {
       const { cx, cy } = origProps as { cx: number; cy: number; rx: number; ry: number };

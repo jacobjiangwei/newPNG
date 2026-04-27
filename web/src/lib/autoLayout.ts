@@ -11,14 +11,17 @@ export function computeLayout(frame: FrameElement): void {
   const layout = frame.auto_layout;
   if (!layout || !frame.children?.length) return;
 
-  const padding = layout.padding ?? 0;
+  const paddingSpec = layout.padding ?? 0;
+  const [paddingTop, paddingRight, paddingBottom, paddingLeft] = Array.isArray(paddingSpec)
+    ? paddingSpec
+    : [paddingSpec, paddingSpec, paddingSpec, paddingSpec];
   const gap = layout.gap ?? 0;
   const isHorizontal = layout.mode === "horizontal";
   const frameW = frame.width ?? 0;
   const frameH = frame.height ?? 0;
-  const contentStart = padding;
-  const contentW = frameW - padding * 2;
-  const contentH = frameH - padding * 2;
+  const contentStart = isHorizontal ? paddingLeft : paddingTop;
+  const contentW = frameW - paddingLeft - paddingRight;
+  const contentH = frameH - paddingTop - paddingBottom;
 
   let offset = contentStart;
   const children = frame.children.filter((child) => child.visible !== false);
@@ -87,17 +90,17 @@ export function computeLayout(frame: FrameElement): void {
 
     if (isHorizontal) {
       c.x = (frame.x ?? 0) + offset;
-      if (align === "start") c.y = (frame.y ?? 0) + padding;
-      else if (align === "center") c.y = (frame.y ?? 0) + padding + (contentH - childH) / 2;
-      else if (align === "end") c.y = (frame.y ?? 0) + padding + contentH - childH;
-      else if (align === "stretch") { c.y = (frame.y ?? 0) + padding; c.height = contentH; }
+      if (align === "start") c.y = (frame.y ?? 0) + paddingTop;
+      else if (align === "center") c.y = (frame.y ?? 0) + paddingTop + (contentH - childH) / 2;
+      else if (align === "end") c.y = (frame.y ?? 0) + paddingTop + contentH - childH;
+      else if (align === "stretch") { c.y = (frame.y ?? 0) + paddingTop; c.height = contentH; }
       offset += childW + effectiveGap;
     } else {
       c.y = (frame.y ?? 0) + offset;
-      if (align === "start") c.x = (frame.x ?? 0) + padding;
-      else if (align === "center") c.x = (frame.x ?? 0) + padding + (contentW - childW) / 2;
-      else if (align === "end") c.x = (frame.x ?? 0) + padding + contentW - childW;
-      else if (align === "stretch") { c.x = (frame.x ?? 0) + padding; c.width = contentW; }
+      if (align === "start") c.x = (frame.x ?? 0) + paddingLeft;
+      else if (align === "center") c.x = (frame.x ?? 0) + paddingLeft + (contentW - childW) / 2;
+      else if (align === "end") c.x = (frame.x ?? 0) + paddingLeft + contentW - childW;
+      else if (align === "stretch") { c.x = (frame.x ?? 0) + paddingLeft; c.width = contentW; }
       offset += childH + effectiveGap;
     }
   }

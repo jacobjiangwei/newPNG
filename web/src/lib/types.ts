@@ -3,6 +3,20 @@ export interface GradientStop {
   color: string;
 }
 
+export type BlendMode =
+  | "normal"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "color-dodge"
+  | "color-burn"
+  | "hard-light"
+  | "soft-light"
+  | "difference"
+  | "exclusion";
+
 export interface LinearGradient {
   type: "linear-gradient";
   x1: number;
@@ -25,6 +39,7 @@ export type FillSpec = string | LinearGradient | RadialGradient | null;
 export interface StrokeSpec {
   color?: string;
   width?: number;
+  alignment?: "inside" | "outside" | "center";
   dash?: number[];
   cap?: "butt" | "round" | "square";
   join?: "miter" | "round" | "bevel";
@@ -41,11 +56,30 @@ export interface TransformSpec {
 export interface FillLayer {
   fill: FillSpec;
   opacity?: number;
-  blend_mode?: string;
+  blend_mode?: BlendMode;
 }
 
 export interface StrokeLayer extends StrokeSpec {
   opacity?: number;
+}
+
+export interface FilterSpec {
+  type: "blur" | "drop-shadow";
+  radius?: number;
+  dx?: number;
+  dy?: number;
+  color?: string;
+}
+
+export interface EffectSpec {
+  type: "blur" | "drop-shadow" | "inner-shadow" | "outer-glow" | "inner-glow";
+  radius?: number;
+  spread?: number;
+  dx?: number;
+  dy?: number;
+  color?: string;
+  opacity?: number;
+  blend_mode?: BlendMode;
 }
 
 // Step 9: Constraints
@@ -70,6 +104,11 @@ export interface BaseElement {
   stroke?: StrokeSpec;
   transform?: TransformSpec;
   opacity?: number;
+  blend_mode?: BlendMode;
+  filters?: FilterSpec[];
+  effects?: EffectSpec[];
+  clip_path?: string;
+  mask?: string;
   fills?: FillLayer[];
   strokes?: StrokeLayer[];
   constraints?: Constraints;
@@ -112,6 +151,8 @@ export interface TextSpan {
   italic?: boolean;
   underline?: boolean;
   font_size?: number;
+  font_weight?: string;
+  letter_spacing?: number;
   fill?: string;
 }
 
@@ -125,6 +166,9 @@ export interface TextElement extends BaseElement {
   font_family?: string;
   font_weight?: string;
   line_height?: number;
+  letter_spacing?: number;
+  paragraph_spacing?: number;
+  vertical_align?: "top" | "center" | "bottom";
   align?: "left" | "center" | "right";
   spans?: TextSpan[];
 }
@@ -164,15 +208,24 @@ export interface ImageElement extends BaseElement {
   width?: number;
   height?: number;
   href?: string;
+  fit?: "fill" | "contain" | "cover" | "none";
+  border_radius?: number;
+  adjustments?: {
+    brightness?: number;
+    contrast?: number;
+    saturation?: number;
+    hue_rotate?: number;
+  };
 }
 
 // Step 10: Frame / Auto Layout
 export interface AutoLayoutSpec {
   mode: "horizontal" | "vertical";
   gap?: number;
-  padding?: number;
+  padding?: number | [number, number, number, number];
   align_items?: "start" | "center" | "end" | "stretch";
   justify_content?: "start" | "center" | "end" | "space-between";
+  wrap?: boolean;
 }
 
 export interface FrameElement extends BaseElement {
@@ -215,14 +268,6 @@ export type NpngElement =
   | ImageElement
   | FrameElement
   | ComponentInstanceElement;
-
-export interface FilterSpec {
-  type: "blur" | "drop-shadow";
-  radius?: number;
-  dx?: number;
-  dy?: number;
-  color?: string;
-}
 
 export interface Layer {
   name?: string;
