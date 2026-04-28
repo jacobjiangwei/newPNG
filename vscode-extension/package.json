@@ -1,0 +1,51 @@
+{
+  "name": "newpng-vscode",
+  "displayName": "NewPNG",
+  "description": "Language support for .npng design source files.",
+  "version": "0.0.1",
+  "publisher": "newpng",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onLanguage:npng"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "npng",
+        "aliases": ["NewPNG", "npng"],
+        "extensions": [".npng"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "npng",
+        "scopeName": "source.yaml.npng",
+        "path": "./syntaxes/npng.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "npng",
+        "path": "./snippets/npng.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "newpng.openViewer",
+        "title": "NewPNG: Open Online Viewer"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.5.4"
+  }
+}

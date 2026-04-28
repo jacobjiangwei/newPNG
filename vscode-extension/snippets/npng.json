@@ -1,0 +1,24 @@
+{
+  "New npng document": {
+    "prefix": "npng",
+    "body": [
+      "npng: \"0.3\"",
+      "canvas:",
+      "  width: ${1:800}",
+      "  height: ${2:600}",
+      "  background: \"${3:#FFFFFF}\"",
+      "layers:",
+      "  - name: \"${4:Layer 1}\"",
+      "    elements:",
+      "      - type: rect",
+      "        x: ${5:100}",
+      "        y: ${6:100}",
+      "        width: ${7:240}",
+      "        height: ${8:140}",
+      "        rx: ${9:16}",
+      "        ry: ${9:16}",
+      "        fill: \"${10:#2563EB}\""
+    ],
+    "description": "Create a minimal editable NewPNG document."
+  }
+}

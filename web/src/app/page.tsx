@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useCallback, useState } from "react";
+import { useReducer, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { editorReducer, createInitialState } from "../lib/editorState";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -10,8 +10,20 @@ import ChatPanel from "../components/ChatPanel";
 import CanvasPreview from "../components/CanvasPreview";
 import PropertyPanel from "../components/PropertyPanel";
 import YamlEditor from "../components/YamlEditor";
+import ProjectPanel from "../components/ProjectPanel";
 import { preloadNpngImages, renderNpng } from "../lib/renderer";
 import { getElementAtAddress } from "../lib/elementTree";
+import { decodeNpngShare, encodeNpngShare, readNpngSharePayload } from "../lib/npngShare";
+import {
+  createStoredProject,
+  getProjectDocument,
+  inferProjectName,
+  loadStoredProjectState,
+  persistStoredProjectState,
+  saveProjectVersion,
+  updateProjectDraft,
+  type StoredNpngProject,
+} from "../lib/projectStorage";
 
 const SATISFACTION_PEACH_YAML = `npng: "0.4"
 canvas:
@@ -1274,12 +1286,20 @@ function LandingPage() {
             <div className="text-lg font-bold tracking-[0.22em]">NewPNG</div>
             <div className="text-[11px] uppercase tracking-[0.28em] text-blue-300/80">AI-native text-to-design</div>
           </div>
-          <Link
-            href="/editing"
-            className="rounded-full border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm text-zinc-300 transition hover:border-blue-400 hover:text-white"
-          >
-            Open Studio
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/viewer"
+              className="rounded-full border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm text-zinc-300 transition hover:border-blue-400 hover:text-white"
+            >
+              Viewer
+            </Link>
+            <Link
+              href="/editing"
+              className="rounded-full border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm text-zinc-300 transition hover:border-blue-400 hover:text-white"
+            >
+              Open Studio
+            </Link>
+          </div>
         </header>
 
         <section className="grid flex-1 items-center gap-10 py-12 lg:grid-cols-[1.05fr_0.95fr]">
@@ -1301,10 +1321,10 @@ function LandingPage() {
                 Try an editable design
               </Link>
               <Link
-                href="/editing"
+                href="/viewer"
                 className="rounded-full border border-zinc-600 bg-zinc-950/60 px-6 py-3 text-sm font-semibold text-zinc-100 transition hover:border-blue-400 hover:bg-blue-500/10"
               >
-                Start from source
+                Open online viewer
               </Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-2 text-xs text-zinc-400">
@@ -1374,8 +1394,74 @@ function LandingPage() {
 
 export function DesignStudio() {
   const [state, dispatch] = useReducer(editorReducer, DEFAULT_YAML, createInitialState);
-  const [leftTab, setLeftTab] = useState<"ai" | "layers" | "source">("ai");
+  const [leftTab, setLeftTab] = useState<"ai" | "layers" | "source" | "projects">("ai");
   const [exportScale, setExportScale] = useState(4);
+  const [projects, setProjects] = useState<StoredNpngProject[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [projectStorageReady, setProjectStorageReady] = useState(false);
+  const [projectStatus, setProjectStatus] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+  const activeProject = projects.find((project) => project.id === activeProjectId) ?? null;
+
+  useEffect(() => {
+    const stored = loadStoredProjectState();
+    let nextProjects = stored.projects;
+    let nextActiveProjectId = stored.activeProjectId;
+    let nextYaml: string | null = null;
+    let nextLeftTab: typeof leftTab | null = null;
+    let nextProjectStatus: string | null = null;
+
+    const payload = readNpngSharePayload(window.location.search, window.location.hash);
+    if (payload) {
+      try {
+        const sharedYaml = decodeNpngShare(payload);
+        const sharedProject = createStoredProject(sharedYaml, "Shared npng", "Imported from share link");
+        nextProjects = [...nextProjects, sharedProject];
+        nextActiveProjectId = sharedProject.id;
+        nextYaml = sharedYaml;
+        nextLeftTab = "projects";
+        nextProjectStatus = "Loaded shared npng source into a local project.";
+      } catch (error) {
+        console.error(error);
+        nextProjectStatus = "Could not decode the shared npng URL.";
+      }
+    } else {
+      const activeStoredProject = nextProjects.find((project) => project.id === nextActiveProjectId);
+      if (activeStoredProject) {
+        nextYaml = getProjectDocument(activeStoredProject);
+      }
+    }
+
+    const timer = window.setTimeout(() => {
+      if (nextYaml) dispatch({ type: "SET_YAML", yaml: nextYaml, pushHistory: false });
+      if (nextLeftTab) setLeftTab(nextLeftTab);
+      if (nextProjectStatus) setProjectStatus(nextProjectStatus);
+      setProjects(nextProjects);
+      setActiveProjectId(nextActiveProjectId);
+      setProjectStorageReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!projectStorageReady) return;
+    persistStoredProjectState(projects, activeProjectId);
+  }, [projects, activeProjectId, projectStorageReady]);
+
+  useEffect(() => {
+    if (!projectStorageReady || !activeProjectId) return;
+    const timer = window.setTimeout(() => {
+      setProjects((currentProjects) => updateProjectDraft(
+        currentProjects,
+        activeProjectId,
+        state.yamlText,
+        inferProjectName(state.parsedDoc),
+      ));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [activeProjectId, projectStorageReady, state.parsedDoc, state.yamlText]);
 
   const handleFitToScreen = useCallback(() => {
     const cw = state.parsedDoc?.canvas?.width ?? 600;
@@ -1433,6 +1519,87 @@ export function DesignStudio() {
     dispatch({ type: "SET_YAML", yaml });
   }, []);
 
+  const handleNewProject = useCallback(() => {
+    const project = createStoredProject(DEFAULT_YAML, "Untitled npng", "Created");
+    setProjects((currentProjects) => [...currentProjects, project]);
+    setActiveProjectId(project.id);
+    dispatch({ type: "SET_YAML", yaml: DEFAULT_YAML, pushHistory: false });
+    setShareUrl(null);
+    setProjectStatus("Created a new local project.");
+    setLeftTab("source");
+  }, []);
+
+  const handleSaveVersion = useCallback(() => {
+    if (!activeProjectId) {
+      const project = createStoredProject(state.yamlText, inferProjectName(state.parsedDoc), "Saved version 1");
+      setProjects((currentProjects) => [...currentProjects, project]);
+      setActiveProjectId(project.id);
+      setProjectStatus("Saved this npng as a local project.");
+      return;
+    }
+
+    const nextVersionNumber = (activeProject?.versions.length ?? 0) + 1;
+    setProjects((currentProjects) => saveProjectVersion(
+      currentProjects,
+      activeProjectId,
+      state.yamlText,
+      `Saved version ${nextVersionNumber}`,
+    ));
+    setProjectStatus(`Saved version ${nextVersionNumber}.`);
+  }, [activeProject, activeProjectId, state.parsedDoc, state.yamlText]);
+
+  const handleOpenProject = useCallback((projectId: string) => {
+    const project = projects.find((item) => item.id === projectId);
+    if (!project) return;
+    setActiveProjectId(project.id);
+    dispatch({ type: "SET_YAML", yaml: getProjectDocument(project), pushHistory: false });
+    setShareUrl(null);
+    setProjectStatus(`Opened ${project.name}.`);
+  }, [projects]);
+
+  const handleRestoreVersion = useCallback((projectId: string, versionId: string) => {
+    const project = projects.find((item) => item.id === projectId);
+    const version = project?.versions.find((item) => item.id === versionId);
+    if (!project || !version) return;
+
+    setActiveProjectId(projectId);
+    setProjects((currentProjects) => currentProjects.map((item) => (
+      item.id === projectId
+        ? { ...item, draftYaml: version.yamlText, currentVersionId: version.id, updatedAt: new Date().toISOString() }
+        : item
+    )));
+    dispatch({ type: "SET_YAML", yaml: version.yamlText, pushHistory: false });
+    setShareUrl(null);
+    setProjectStatus(`Restored ${version.label}.`);
+  }, [projects]);
+
+  const handleDeleteProject = useCallback((projectId: string) => {
+    const project = projects.find((item) => item.id === projectId);
+    if (!project || !window.confirm(`Delete local project "${project.name}"?`)) return;
+
+    const remainingProjects = projects.filter((item) => item.id !== projectId);
+    setProjects(remainingProjects);
+    if (projectId === activeProjectId) {
+      const nextProject = remainingProjects[0] ?? null;
+      setActiveProjectId(nextProject?.id ?? null);
+      dispatch({ type: "SET_YAML", yaml: nextProject ? getProjectDocument(nextProject) : DEFAULT_YAML, pushHistory: false });
+    }
+    setShareUrl(null);
+    setProjectStatus("Deleted the local project.");
+  }, [activeProjectId, projects]);
+
+  const handleCreateShareLink = useCallback(async () => {
+    const url = `${window.location.origin}/viewer#npng=${encodeNpngShare(state.yamlText)}`;
+    setShareUrl(url);
+    try {
+      await navigator.clipboard.writeText(url);
+      setProjectStatus("Viewer share link copied.");
+    } catch (error) {
+      console.error(error);
+      setProjectStatus("Copy failed; select the link below manually.");
+    }
+  }, [state.yamlText]);
+
   const handleImageUpload = useCallback((dataUrl: string, imageWidth: number, imageHeight: number) => {
     const maxSize = 300;
     const scale = Math.min(1, maxSize / Math.max(imageWidth, imageHeight));
@@ -1463,6 +1630,7 @@ export function DesignStudio() {
     { id: "ai", label: "AI", hint: "Prompt and patch" },
     { id: "layers", label: "Layers", hint: "Object tree" },
     { id: "source", label: "Source", hint: "npng YAML" },
+    { id: "projects", label: "Files", hint: "Save and share" },
   ];
 
   return (
@@ -1489,7 +1657,7 @@ export function DesignStudio() {
           <div className="px-4 py-3 border-b border-zinc-700/80">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-zinc-100">Untitled npng</div>
+                <div className="truncate text-sm font-semibold text-zinc-100">{activeProject?.name ?? "Untitled npng"}</div>
                 <div className="mt-0.5 text-[11px] text-blue-300/80">AI-native editable design</div>
               </div>
               <div className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] text-zinc-400">
@@ -1497,7 +1665,7 @@ export function DesignStudio() {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-1 border-b border-zinc-700/80 p-2">
+          <div className="grid grid-cols-4 gap-1 border-b border-zinc-700/80 p-2">
             {leftTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -1533,6 +1701,20 @@ export function DesignStudio() {
             )}
             {leftTab === "source" && (
               <YamlEditor value={state.yamlText} onChange={handleYamlChange} />
+            )}
+            {leftTab === "projects" && (
+              <ProjectPanel
+                projects={projects}
+                activeProjectId={activeProjectId}
+                shareUrl={shareUrl}
+                status={projectStatus}
+                onNewProject={handleNewProject}
+                onSaveVersion={handleSaveVersion}
+                onOpenProject={handleOpenProject}
+                onRestoreVersion={handleRestoreVersion}
+                onDeleteProject={handleDeleteProject}
+                onCreateShareLink={handleCreateShareLink}
+              />
             )}
           </div>
         </aside>

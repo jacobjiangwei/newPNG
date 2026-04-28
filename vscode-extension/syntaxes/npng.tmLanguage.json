@@ -1,0 +1,8 @@
+{
+  "scopeName": "source.yaml.npng",
+  "patterns": [
+    {
+      "include": "source.yaml"
+    }
+  ]
+}

@@ -2,3 +2,5 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+vscode-extension/node_modules/
+vscode-extension/out/

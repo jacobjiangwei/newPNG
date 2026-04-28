@@ -12,8 +12,9 @@ NewPNG takes a different path: **AI generates editable design source**. The imag
 
 | Destination | URL |
 |---|---|
-| Product landing page | https://newpng.azurewebsites.net |
-| Design studio | https://newpng.azurewebsites.net/editing |
+| Product landing page | https://nextpng.org |
+| Design studio | https://nextpng.org/editing |
+| Online npng viewer | https://nextpng.org/viewer |
 | AI generation guide | https://github.com/jacobjiangwei/newPNG/blob/main/spec/AI_GENERATION_GUIDE.md |
 | npng format spec | https://github.com/jacobjiangwei/newPNG/blob/main/spec/npng-v3.md |
 
@@ -103,7 +104,8 @@ The web app in `web/` is the main deliverable.
 - **Text boxes**: wrapping, width, line height, fill, stroke, and editable content.
 - **Path node editing**: drag anchors/handles, insert anchors, delete anchors.
 - **Renderer**: layers, groups, defs/use, gradients, strokes, multi-fills, multi-strokes, transforms, opacity, blend modes, filters, masks, clips, text stroke.
-- **Export**: `.npng` source download and high-DPI PNG export at 1x, 2x, or 4x.
+- **Export and share**: `.npng` source download, high-DPI PNG export at 1x, 2x, or 4x, local project versions, and URL-based viewer sharing.
+- **Online viewer**: `/viewer` opens pasted, uploaded, or shared `.npng` source without entering the full Studio.
 
 ## Product direction
 
@@ -113,7 +115,7 @@ The next milestones are about making AI-generated design source feel more like a
 2. **Richer Figma-like layout**: frames, constraints, auto layout, padding, gap, hug/fill behavior.
 3. **Reusable design systems**: components, instances, variants, color styles, text styles, effect styles.
 4. **Stronger vector operations**: boolean operations UI, compound paths, outline stroke, flatten, corner smoothing.
-5. **Better source portability**: compact/minified npng, copy links, import/export helpers.
+5. **Better source portability**: compact/minified npng, copy links, import/export helpers, schemas, and editor integrations.
 
 ## Contribute
 
@@ -142,7 +144,8 @@ newPNG/
 ├── spec/                 # npng format specification and roadmap
 ├── examples/             # Example .npng files
 ├── renderer/             # Original Python renderer reference
-└── tools/                # Utility scripts
+├── tools/                # Utility scripts
+└── vscode-extension/     # VS Code language support for .npng files
 ```
 
 ## Development
@@ -163,3 +166,7 @@ npm run build
 Every push to `main` deploys the website to Azure App Service:
 
 https://newpng.azurewebsites.net
+
+The custom production domain is:
+
+https://nextpng.org
