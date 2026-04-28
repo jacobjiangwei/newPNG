@@ -946,7 +946,7 @@ const EXAMPLES = [
   },
   {
     name: "Hello World",
-    yaml: `npng: "0.1"\ncanvas:\n  width: 400\n  height: 300\n  background: "#FFFFFF"\nlayers:\n  - name: "shapes"\n    elements:\n      - type: rect\n        x: 30\n        y: 30\n        width: 120\n        height: 80\n        fill: "#E74C3C"\n      - type: ellipse\n        cx: 280\n        cy: 100\n        rx: 60\n        ry: 40\n        fill: "#3498DB"\n      - type: text\n        x: 200\n        y: 240\n        content: "Hello NewPNG!"\n        font_size: 20\n        font_family: "sans-serif"\n        font_weight: "bold"\n        fill: "#FFFFFF"\n        align: "center"`,
+    yaml: `npng: "0.1"\ncanvas:\n  width: 400\n  height: 300\n  background: "#FFFFFF"\nlayers:\n  - name: "shapes"\n    elements:\n      - type: rect\n        x: 30\n        y: 30\n        width: 120\n        height: 80\n        fill: "#E74C3C"\n      - type: ellipse\n        cx: 280\n        cy: 100\n        rx: 60\n        ry: 40\n        fill: "#3498DB"\n      - type: text\n        x: 200\n        y: 240\n        content: "Hello nextPNG!"\n        font_size: 20\n        font_family: "sans-serif"\n        font_weight: "bold"\n        fill: "#FFFFFF"\n        align: "center"`,
   },
   {
     name: "Gradient Star",
@@ -1132,7 +1132,7 @@ layers:
       - type: text
         x: 300
         y: 300
-        content: "NewPNG"
+        content: "nextPNG"
         font_size: 42
         font_family: "sans-serif"
         font_weight: "bold"
@@ -1265,7 +1265,7 @@ function LandingPage() {
   const valueCards = [
     {
       title: "AI output stays editable",
-      body: "Most AI image tools stop at a bitmap. NewPNG keeps layers, text, paths, and styles as design source you can tweak.",
+      body: "Most AI image tools stop at a bitmap. nextPNG keeps layers, text, paths, and styles as design source you can tweak.",
     },
     {
       title: "Figma-like, not flat",
@@ -1283,7 +1283,7 @@ function LandingPage() {
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-6 lg:px-10">
         <header className="flex items-center justify-between">
           <div>
-            <div className="text-lg font-bold tracking-[0.22em]">NewPNG</div>
+            <div className="text-lg font-bold tracking-[0.22em]">nextPNG</div>
             <div className="text-[11px] uppercase tracking-[0.28em] text-blue-300/80">AI-native text-to-design</div>
           </div>
           <div className="flex items-center gap-2">
@@ -1311,7 +1311,7 @@ function LandingPage() {
               Generate with AI. Edit it like a design file.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300">
-              AI image generators give you pixels that are hard to change. NewPNG generates Figma-like vector source instead: layered, editable, portable as text, and rendered sharply at any size.
+              AI image generators give you pixels that are hard to change. nextPNG generates Figma-like vector source instead: layered, editable, portable as text, and rendered sharply at any size.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link

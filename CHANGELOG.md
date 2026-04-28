@@ -1,4 +1,4 @@
-# NewPNG Changelog
+# nextPNG Changelog
 
 ## v0.1 (Initial Release)
 

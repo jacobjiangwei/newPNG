@@ -1,15 +1,15 @@
-# NewPNG — Copilot / Agent Instructions
+# nextPNG — Copilot / Agent Instructions
 
 ## What is this project?
 
-NewPNG is an AI-native online vector graphics design tool. Users describe images in natural language, Claude AI generates YAML in a custom format called **npng**, and the web app renders it in real-time on Canvas 2D. Users can also manually edit the YAML and export PNG/npng files.
+nextPNG is an AI-native online vector graphics design tool. Users describe images in natural language, Claude AI generates YAML in a custom format called **npng**, and the web app renders it in real-time on Canvas 2D. Users can also manually edit the YAML and export PNG/npng files.
 
-**Live site:** https://newpng.azurewebsites.net
+**Live site:** https://nextpng.org
 
 ## Repository structure
 
 ```
-newPNG/
+nextPNG/
 ├── web/                        # Next.js 16 web application (THE main deliverable)
 │   ├── src/
 │   │   ├── app/

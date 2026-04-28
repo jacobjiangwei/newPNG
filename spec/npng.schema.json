@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://newpng.azurewebsites.net/schema/npng.schema.json",
-  "title": "NewPNG document",
+  "$id": "https://nextpng.org/schema/npng.schema.json",
+  "title": "nextPNG document",
   "description": "Schema for npng YAML vector graphics documents.",
   "type": "object",
   "required": ["npng", "canvas", "layers"],

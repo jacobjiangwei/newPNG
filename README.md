@@ -1,10 +1,10 @@
-# NewPNG
+# nextPNG
 
 **AI-native text-to-design for editable, lossless, Figma-like vector graphics.**
 
 AI image generators can create a beautiful first draft, but the result is usually a flat bitmap. If the text is wrong, the layout is almost right, or one color needs to change, you are often forced to prompt again and hope.
 
-NewPNG takes a different path: **AI generates editable design source**. The image is stored as structured `npng` YAML, rendered as vector graphics, and refined in a Figma-like editor.
+nextPNG takes a different path: **AI generates editable design source**. The image is stored as structured `npng` YAML, rendered as vector graphics, and refined in a Figma-like editor.
 
 > **Generate with AI. Edit it like a design file. Ship the source, not blurry pixels.**
 
@@ -15,12 +15,12 @@ NewPNG takes a different path: **AI generates editable design source**. The imag
 | Product landing page | https://nextpng.org |
 | Design studio | https://nextpng.org/editing |
 | Online npng viewer | https://nextpng.org/viewer |
-| AI generation guide | https://github.com/jacobjiangwei/newPNG/blob/main/spec/AI_GENERATION_GUIDE.md |
-| npng format spec | https://github.com/jacobjiangwei/newPNG/blob/main/spec/npng-v3.md |
+| AI generation guide | https://github.com/jacobjiangwei/nextPNG/blob/main/spec/AI_GENERATION_GUIDE.md |
+| npng format spec | https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v3.md |
 
-## Why NewPNG exists
+## Why nextPNG exists
 
-Most AI image workflows end with pixels. NewPNG is built for the moment when the AI result is already 80% right and you just want to adjust it:
+Most AI image workflows end with pixels. nextPNG is built for the moment when the AI result is already 80% right and you just want to adjust it:
 
 - Change the headline without regenerating the whole image.
 - Move one layer, icon, card, or decoration.
@@ -32,11 +32,11 @@ The mission is:
 
 > **Figma-like visual expression + text-native generation/transmission + AI-native editing.**
 
-NewPNG is not trying to be a Mermaid flowchart clone, and it is not a Photoshop-style raster editor. It is a text-native design format and editor for structured visuals: UI mockups, icons, posters, cards, banners, logos, product visuals, technical illustrations, and infographics.
+nextPNG is not trying to be a Mermaid flowchart clone, and it is not a Photoshop-style raster editor. It is a text-native design format and editor for structured visuals: UI mockups, icons, posters, cards, banners, logos, product visuals, technical illustrations, and infographics.
 
 ## What makes npng different
 
-| Bitmap AI output | NewPNG source |
+| Bitmap AI output | nextPNG source |
 |---|---|
 | Flat pixels | Layered vector structure |
 | Hard to edit precisely | Text, shapes, paths, layers, and styles stay editable |
@@ -119,7 +119,7 @@ The next milestones are about making AI-generated design source feel more like a
 
 ## Contribute
 
-Contributions are welcome. NewPNG is still early, and there is a lot of room to shape both the product and the format.
+Contributions are welcome. nextPNG is still early, and there is a lot of room to shape both the product and the format.
 
 Good contribution areas:
 
@@ -136,7 +136,7 @@ If you are not sure where to start, open an issue with what you want to improve.
 ## Repository structure
 
 ```text
-newPNG/
+nextPNG/
 ├── web/                  # Next.js web app and main product
 │   ├── src/app/          # Landing page, /editing studio, API route
 │   ├── src/components/   # Canvas, toolbar, layer panel, editor panels
@@ -165,7 +165,7 @@ npm run build
 
 Every push to `main` deploys the website to Azure App Service:
 
-https://newpng.azurewebsites.net
+https://nextpng.org
 
 The custom production domain is:
 

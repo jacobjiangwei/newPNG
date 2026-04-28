@@ -17,19 +17,19 @@ interface ChatPanelProps {
   } | null;
 }
 
-const AI_GUIDE_URL = "https://github.com/jacobjiangwei/newPNG/blob/main/spec/AI_GENERATION_GUIDE.md";
-const FORMAT_SPEC_URL = "https://github.com/jacobjiangwei/newPNG/blob/main/spec/npng-v3.md";
-const INLINE_NEWPNG_AI_INSTRUCTIONS = `You are a NewPNG source generator.
+const AI_GUIDE_URL = "https://github.com/jacobjiangwei/nextPNG/blob/main/spec/AI_GENERATION_GUIDE.md";
+const FORMAT_SPEC_URL = "https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v3.md";
+const INLINE_NEXTPNG_AI_INSTRUCTIONS = `You are a nextPNG source generator.
 
-NewPNG is an editable YAML-based vector design format. Generate design source, not pixels.
+nextPNG is an editable YAML-based vector design format. Generate design source, not pixels.
 
 Output contract:
-- Return exactly one complete NewPNG YAML document.
+- Return exactly one complete nextPNG YAML document.
 - Wrap the document in one markdown code fence: \`\`\`yaml ... \`\`\`.
 - Use npng: "0.3".
 - Do not return SVG, JSON, HTML/CSS, PNG/base64 bitmap, or a prose-only description.
-- Do not say you cannot create an image. Create editable NewPNG YAML.
-- Keep the result visually polished and easy to edit in NewPNG Studio.
+- Do not say you cannot create an image. Create editable nextPNG YAML.
+- Keep the result visually polished and easy to edit in nextPNG Studio.
 
 Required top-level shape:
 npng: "0.3"
@@ -193,7 +193,7 @@ Preflight before final answer:
 
 function buildExternalAiPrompt(imageRequest: string) {
   const request = imageRequest.trim() || "[describe what you want here]";
-  return `${INLINE_NEWPNG_AI_INSTRUCTIONS}
+  return `${INLINE_NEXTPNG_AI_INSTRUCTIONS}
 
 Image request:
 ${request}`;
@@ -367,7 +367,7 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, onOpenLayers, 
               <>
                 <p className="font-medium text-zinc-300">AI onboarding: go out, generate, come back.</p>
                 <p className="text-zinc-500">
-                  First describe what you want. NewPNG will package your request with embedded generation rules so you
+                  First describe what you want. nextPNG will package your request with embedded generation rules so you
                   can paste it into ChatGPT, Claude, Gemini, or any AI tool.
                 </p>
                 <label className="block rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-2">
@@ -455,7 +455,7 @@ export default function ChatPanel({ onYamlGenerated, currentYaml, onOpenLayers, 
                   {copyError && <div className="text-[11px] text-red-300">{copyError}</div>}
                 </div>
                 <p className="text-xs text-zinc-600">
-                  Short version: generate editable NewPNG source, not pixels.
+                  Short version: generate editable nextPNG source, not pixels.
                 </p>
               </>
             )}

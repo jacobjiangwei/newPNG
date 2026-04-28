@@ -19,6 +19,6 @@
       "        ry: ${9:16}",
       "        fill: \"${10:#2563EB}\""
     ],
-    "description": "Create a minimal editable NewPNG document."
+    "description": "Create a minimal editable nextPNG document."
   }
 }

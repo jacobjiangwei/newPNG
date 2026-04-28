@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NewPNG renderer — reads .npng (YAML) files and renders to PNG via pycairo."""
+"""nextPNG renderer — reads .npng (YAML) files and renders to PNG via pycairo."""
 
 import sys
 import os
@@ -1009,7 +1009,7 @@ def main():
         output_path = sys.argv[2]
     else:
         base = os.path.splitext(os.path.basename(input_path))[0]
-        output_path = f"/tmp/newpng-renders/{base}.png"
+        output_path = f"/tmp/nextpng-renders/{base}.png"
 
     with open(input_path) as f:
         data = yaml.safe_load(f)

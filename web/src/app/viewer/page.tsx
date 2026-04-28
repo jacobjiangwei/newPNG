@@ -141,7 +141,7 @@ export default function NpngViewerPage() {
     <main className="flex min-h-screen flex-col bg-[#111111] text-zinc-100">
       <header className="flex items-center justify-between border-b border-zinc-800 bg-[#181818] px-5 py-3">
         <div>
-          <div className="text-sm font-bold tracking-[0.2em]">NewPNG Viewer</div>
+          <div className="text-sm font-bold tracking-[0.2em]">nextPNG Viewer</div>
           <div className="text-[11px] uppercase tracking-[0.18em] text-blue-300/70">Online .npng preview and sharing</div>
         </div>
         <div className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-# NewPNG Iteration Log
+# nextPNG Iteration Log
 
 ## Iteration 1: Hello World
 - **Target**: Simple shapes (rect, ellipse, rounded rect) with text

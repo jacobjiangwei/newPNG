@@ -1,8 +1,8 @@
-# NewPNG Format Specification — v0.3
+# nextPNG Format Specification — v0.3
 
 ## Overview
 
-NewPNG (`.npng`) is a YAML-based, human-readable image format for describing vector and compositing graphics.
+nextPNG (`.npng`) is a YAML-based, human-readable image format for describing vector and compositing graphics.
 
 ## File Structure
 

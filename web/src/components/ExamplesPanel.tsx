@@ -36,7 +36,7 @@ layers:
       - type: text
         x: 200
         y: 240
-        content: "Hello NewPNG!"
+        content: "Hello nextPNG!"
         font_size: 20
         font_family: "sans-serif"
         font_weight: "bold"

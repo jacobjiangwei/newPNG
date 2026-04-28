@@ -1,8 +1,8 @@
-# NewPNG Implementation Progress
+# nextPNG Implementation Progress
 
 ## Mission
 
-NewPNG is an AI-native text-to-design format and editor for editable, lossless, Figma-like vector graphics. The product goal is to make design files as easy to generate, transmit, diff, and remix as text while preserving high-quality visual output.
+nextPNG is an AI-native text-to-design format and editor for editable, lossless, Figma-like vector graphics. The product goal is to make design files as easy to generate, transmit, diff, and remix as text while preserving high-quality visual output.
 
 ## Status
 

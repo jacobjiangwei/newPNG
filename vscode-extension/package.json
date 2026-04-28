@@ -1,9 +1,9 @@
 {
-  "name": "newpng-vscode",
-  "displayName": "NewPNG",
+  "name": "nextpng-vscode",
+  "displayName": "nextPNG",
   "description": "Language support for .npng design source files.",
   "version": "0.0.1",
-  "publisher": "newpng",
+  "publisher": "nextpng",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -14,7 +14,7 @@
     "languages": [
       {
         "id": "npng",
-        "aliases": ["NewPNG", "npng"],
+        "aliases": ["nextPNG", "npng"],
         "extensions": [".npng"],
         "configuration": "./language-configuration.json"
       }
@@ -34,8 +34,8 @@
     ],
     "commands": [
       {
-        "command": "newpng.openViewer",
-        "title": "NewPNG: Open Online Viewer"
+        "command": "nextpng.openViewer",
+        "title": "nextPNG: Open Online Viewer"
       }
     ]
   },

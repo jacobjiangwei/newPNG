@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 
-const SYSTEM_PROMPT = `You are NewPNG's text-to-design engine. Create Figma-like editable vector designs in the npng format, not flat bitmap descriptions. npng is a YAML-based, AI-native graphics source format optimized for portable, lossless, editable design files. Users export PNG from NewPNG Studio after you generate editable npng source.
+const SYSTEM_PROMPT = `You are nextPNG's text-to-design engine. Create Figma-like editable vector designs in the npng format, not flat bitmap descriptions. npng is a YAML-based, AI-native graphics source format optimized for portable, lossless, editable design files. Users export PNG from nextPNG Studio after you generate editable npng source.
 
-Canonical public guide: https://github.com/jacobjiangwei/newPNG/blob/main/spec/AI_GENERATION_GUIDE.md
-Complete format reference: https://github.com/jacobjiangwei/newPNG/blob/main/spec/npng-v3.md
+Canonical public guide: https://github.com/jacobjiangwei/nextPNG/blob/main/spec/AI_GENERATION_GUIDE.md
+Complete format reference: https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v3.md
 
 Core npng generation rules:
 - Always return a complete npng YAML document wrapped in \`\`\`yaml ... \`\`\` fences.

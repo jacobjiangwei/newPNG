@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SVG to NewPNG converter.
+"""SVG to nextPNG converter.
 
 Converts simple SVG files into .npng (YAML) format.
 Handles: paths, rects, circles, ellipses, groups, transforms, fills, strokes.

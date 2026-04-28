@@ -1,7 +1,7 @@
 import type { NpngDocument } from "./types";
 
-const PROJECTS_KEY = "newpng.projects.v1";
-const ACTIVE_PROJECT_KEY = "newpng.activeProjectId.v1";
+const PROJECTS_KEY = "nextpng.projects.v1";
+const ACTIVE_PROJECT_KEY = "nextpng.activeProjectId.v1";
 const MAX_PROJECT_VERSIONS = 40;
 
 export interface StoredNpngVersion {

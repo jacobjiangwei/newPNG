@@ -65,7 +65,7 @@ export default function Toolbar({
   return (
     <div className="flex items-center gap-1 px-3 py-1.5 bg-[#1a1a1a] border-b border-zinc-700">
       <div className="mr-3 flex min-w-[170px] flex-col leading-tight">
-        <span className="text-sm font-bold tracking-wider text-zinc-100">NewPNG</span>
+        <span className="text-sm font-bold tracking-wider text-zinc-100">nextPNG</span>
         <span className="text-[10px] uppercase tracking-[0.18em] text-blue-300/70">Text-to-design</span>
       </div>
 

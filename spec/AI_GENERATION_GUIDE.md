@@ -1,12 +1,12 @@
-# NewPNG AI Generation Guide
+# nextPNG AI Generation Guide
 
-This document is the agent-facing guide for generating editable NewPNG images. It is intentionally detailed: an AI agent should be able to read this file and produce `.npng` YAML that opens in NewPNG Studio, renders on Canvas, remains editable in the layer/source inspector, and exports to PNG from the Studio toolbar.
+This document is the agent-facing guide for generating editable nextPNG images. It is intentionally detailed: an AI agent should be able to read this file and produce `.npng` YAML that opens in nextPNG Studio, renders on Canvas, remains editable in the layer/source inspector, and exports to PNG from the Studio toolbar.
 
 For the compact baseline format reference, see [`npng-v3.md`](./npng-v3.md). This guide covers the current Studio generation surface: the v0.3 baseline plus Studio-supported extensions such as frames, images, effects, multiple fills/strokes, constraints, auto layout, and component instances.
 
 ## 1. The core contract
 
-When a user asks for an image, graphic, icon, poster, UI, logo, product card, diagram, or PNG, generate a complete NewPNG document as YAML. Do **not** generate a flat bitmap, JSON object, SVG markup, HTML/CSS, or a prose-only description.
+When a user asks for an image, graphic, icon, poster, UI, logo, product card, diagram, or PNG, generate a complete nextPNG document as YAML. Do **not** generate a flat bitmap, JSON object, SVG markup, HTML/CSS, or a prose-only description.
 
 Always wrap the final output in a YAML code fence:
 
@@ -27,12 +27,12 @@ layers:
 Short system instruction for another AI agent:
 
 ```text
-You generate editable NewPNG source. Return one complete `.npng` YAML document in a ```yaml code block. Use `npng: "0.3"` by default. Keep text as `type: text`, use named layers and stable kebab-case object IDs, prefer editable shapes/groups/frames over one giant path, preserve unrelated objects when editing an existing document, and let NewPNG Studio handle PNG export.
+You generate editable nextPNG source. Return one complete `.npng` YAML document in a ```yaml code block. Use `npng: "0.3"` by default. Keep text as `type: text`, use named layers and stable kebab-case object IDs, prefer editable shapes/groups/frames over one giant path, preserve unrelated objects when editing an existing document, and let nextPNG Studio handle PNG export.
 ```
 
 ## 2. Mental model
 
-NewPNG is closer to a Figma document than to a bitmap. The AI is not painting pixels. It is authoring a structured design file:
+nextPNG is closer to a Figma document than to a bitmap. The AI is not painting pixels. It is authoring a structured design file:
 
 - **Canvas** defines the artboard size and background.
 - **Layers** define top-level render order and organization.
@@ -1172,7 +1172,7 @@ If a selected object is provided, treat the request as local to that object by d
 
 ## 18. Quality heuristics for AI-generated designs
 
-Strong NewPNG examples usually include:
+Strong nextPNG examples usually include:
 
 - clear art direction: palette, composition, and hierarchy
 - named layers and named objects
@@ -1344,7 +1344,7 @@ layers:
         x: 232
         y: 315
         width: 380
-        content: "NewPNG keeps every layer, text box, shape, and effect editable after AI generation."
+        content: "nextPNG keeps every layer, text box, shape, and effect editable after AI generation."
         font_size: 18
         line_height: 1.45
         fill: "#B8C7E8"
@@ -1534,13 +1534,13 @@ layers:
 
 ## 22. Final response behavior
 
-When answering a user in NewPNG generation mode:
+When answering a user in nextPNG generation mode:
 
 1. If they ask for a design/image, output the full YAML in one fenced code block.
 2. Optionally add one short sentence before the code explaining what it is.
 3. Do not include multiple alternative YAML documents unless asked.
 4. Do not omit code because the document is long.
-5. If the request is impossible in current NewPNG, say what limitation applies and produce the closest editable structure.
+5. If the request is impossible in current nextPNG, say what limitation applies and produce the closest editable structure.
 
 The canonical output remains:
 

@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-const VIEWER_URL = "https://newpng.azurewebsites.net/viewer";
+const VIEWER_URL = "https://nextpng.org/viewer";
 
 function encodeSharePayload(source: string): string {
   const payload = Buffer.from(source, "utf8")
@@ -12,10 +12,10 @@ function encodeSharePayload(source: string): string {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  const command = vscode.commands.registerCommand("newpng.openViewer", async () => {
+  const command = vscode.commands.registerCommand("nextpng.openViewer", async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.languageId !== "npng") {
-      await vscode.window.showWarningMessage("Open a .npng file before launching the NewPNG viewer.");
+      await vscode.window.showWarningMessage("Open a .npng file before launching the nextPNG viewer.");
       return;
     }
 
