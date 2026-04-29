@@ -1034,8 +1034,77 @@ function renderElement(
         renderElement(ctx, resolved, defs, components, onAsyncResourceLoaded, pixelRatio);
       }
     }
+  } else if (elem.type === "boolean") {
+    renderBooleanOp(ctx, elem, defs, components, onAsyncResourceLoaded, pixelRatio);
   }
 
+  ctx.restore();
+}
+
+function renderBooleanOp(
+  ctx: CanvasRenderingContext2D,
+  elem: Extract<NpngElement, { type: "boolean" }>,
+  defs: Map<string, DefItem> | undefined,
+  components: ComponentDef[] | undefined,
+  onAsyncResourceLoaded?: () => void,
+  pixelRatio?: number
+): void {
+  const op = elem.op ?? "union";
+  const subjects = (elem.subjects ?? []) as unknown as NpngElement[];
+  const clips = (elem.clips ?? []) as unknown as NpngElement[];
+
+  if (subjects.length === 0) return;
+
+  if (op === "union") {
+    // Union: just render all subjects and clips together
+    for (const s of subjects) renderElement(ctx, s, defs, components, onAsyncResourceLoaded, pixelRatio);
+    for (const c of clips) renderElement(ctx, c, defs, components, onAsyncResourceLoaded, pixelRatio);
+    return;
+  }
+
+  // For subtract/intersect/exclude we use offscreen canvases
+  const canvas = ctx.canvas;
+  const w = canvas.width;
+  const h = canvas.height;
+
+  // Render subjects onto temp canvas
+  const subjectCanvas = document.createElement("canvas");
+  subjectCanvas.width = w;
+  subjectCanvas.height = h;
+  const subjectCtx = subjectCanvas.getContext("2d");
+  if (!subjectCtx) return;
+  subjectCtx.setTransform(ctx.getTransform());
+  for (const s of subjects) renderElement(subjectCtx, s, defs, components, onAsyncResourceLoaded, pixelRatio);
+
+  if (clips.length === 0) {
+    ctx.drawImage(subjectCanvas, 0, 0);
+    return;
+  }
+
+  // Render clips onto another temp canvas
+  const clipCanvas = document.createElement("canvas");
+  clipCanvas.width = w;
+  clipCanvas.height = h;
+  const clipCtx = clipCanvas.getContext("2d");
+  if (!clipCtx) return;
+  clipCtx.setTransform(ctx.getTransform());
+  for (const c of clips) renderElement(clipCtx, c, defs, components, onAsyncResourceLoaded, pixelRatio);
+
+  // Composite based on operation
+  const compositeOps: Record<string, GlobalCompositeOperation> = {
+    subtract: "destination-out",
+    intersect: "destination-in",
+    exclude: "xor",
+  };
+
+  subjectCtx.resetTransform();
+  subjectCtx.globalCompositeOperation = compositeOps[op] ?? "source-over";
+  subjectCtx.drawImage(clipCanvas, 0, 0);
+
+  // Draw result onto main canvas
+  ctx.save();
+  ctx.resetTransform();
+  ctx.drawImage(subjectCanvas, 0, 0);
   ctx.restore();
 }
 

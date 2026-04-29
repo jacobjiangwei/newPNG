@@ -211,6 +211,12 @@ function elementToSvg(el: NpngElement, svgDefs: string[]): string {
       const href = el.href ?? "";
       return `<image x="${x}" y="${y}" width="${w}" height="${h}" href="${escapeXml(href)}" ${attrs} />`;
     }
+    case "boolean": {
+      const subjects = (el.subjects ?? []) as unknown as NpngElement[];
+      const clips = (el.clips ?? []) as unknown as NpngElement[];
+      const allChildren = [...subjects, ...clips].map((c) => elementToSvg(c, svgDefs)).join("\n");
+      return `<g ${attrs} data-boolean-op="${el.op ?? "union"}">\n${allChildren}\n</g>`;
+    }
     default:
       return `<!-- unsupported element type: ${el.type} -->`;
   }
