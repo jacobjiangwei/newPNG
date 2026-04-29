@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import type { Tool, EditorAction } from "../lib/editorState";
 
 interface ToolbarProps {
@@ -90,10 +91,10 @@ export default function Toolbar({
 
   return (
     <div className="flex items-center gap-1 px-3 py-1.5 bg-[#1a1a1a] border-b border-zinc-700">
-      <div className="mr-1 flex min-w-[90px] flex-col leading-tight">
+      <Link href="/" className="mr-1 flex min-w-[90px] flex-col leading-tight hover:opacity-80 transition-opacity">
         <span className="text-sm font-bold tracking-wider text-zinc-100">nextPNG</span>
         <span className="text-[10px] uppercase tracking-[0.18em] text-blue-300/70">Text-to-design</span>
-      </div>
+      </Link>
 
       {/* File menu */}
       <div className="relative" ref={fileMenuRef}>
