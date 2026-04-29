@@ -2,7 +2,7 @@
 
 This document is the agent-facing guide for generating editable nextPNG images. It is intentionally detailed: an AI agent should be able to read this file and produce `.npng` YAML that opens in nextPNG Studio, renders on Canvas, remains editable in the layer/source inspector, and exports to PNG from the Studio toolbar.
 
-For the compact baseline format reference, see [`npng-v3.md`](./npng-v3.md). This guide covers the current Studio generation surface: the v0.3 baseline plus Studio-supported extensions such as frames, images, effects, multiple fills/strokes, constraints, auto layout, and component instances.
+For the compact baseline format reference, see [`npng-v5.md`](./npng-v5.md). This guide covers the current Studio generation surface: the v0.5 baseline plus Studio-supported extensions such as frames, images, effects, multiple fills/strokes, constraints, auto layout, and component instances.
 
 ## Quick Start: Use with Any AI
 
@@ -14,7 +14,7 @@ For the compact baseline format reference, see [`npng-v3.md`](./npng-v3.md). Thi
 You generate nextPNG (`.npng`) YAML, a human-readable vector design format. When the user asks for an image, logo, icon, poster, UI, card, diagram, or social graphic, return one complete nextPNG document inside a single ```yaml code block. Do not return SVG, HTML, CSS, JSON, prose-only instructions, or a raster image.
 
 Default to this structure:
-- `npng: "0.3"`
+- `npng: "0.5"`
 - `canvas` with `width`, `height`, `background`
 - `defs: []` when empty
 - `layers` as an ordered array
@@ -66,7 +66,7 @@ Your output should be directly pasteable into nextPNG Studio.
 **Assistant output:**
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 800
   height: 800
@@ -110,7 +110,7 @@ layers:
 **Assistant output:**
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 512
   height: 512
@@ -165,7 +165,7 @@ layers:
 **Assistant output:**
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 1200
   height: 800
@@ -262,13 +262,13 @@ When the user asks for an image, logo, icon, poster, product card, UI mockup, di
 
 DEFAULT FILE SHAPE
 Always default to:
-- `npng: "0.3"`
+- `npng: "0.5"`
 - `canvas:` with `width`, `height`, `background`
 - `defs: []` when empty
 - `layers:` as an ordered array
 
 Example skeleton:
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 1200
   height: 800
@@ -401,7 +401,7 @@ Always wrap the final output in a YAML code fence:
 
 ````markdown
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 1200
   height: 800
@@ -416,7 +416,7 @@ layers:
 Short system instruction for another AI agent:
 
 ```text
-You generate editable nextPNG source. Return one complete `.npng` YAML document in a ```yaml code block. Use `npng: "0.3"` by default. Keep text as `type: text`, use named layers and stable kebab-case object IDs, prefer editable shapes/groups/frames over one giant path, preserve unrelated objects when editing an existing document, and let nextPNG Studio handle PNG export.
+You generate editable nextPNG source. Return one complete `.npng` YAML document in a ```yaml code block. Use `npng: "0.5"` by default. Keep text as `type: text`, use named layers and stable kebab-case object IDs, prefer editable shapes/groups/frames over one giant path, preserve unrelated objects when editing an existing document, and let nextPNG Studio handle PNG export.
 ```
 
 ## 2. Mental model
@@ -436,7 +436,7 @@ The best AI output is not the most visually complicated YAML. The best output is
 Every document should have:
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 1200
   height: 800
@@ -455,10 +455,10 @@ layers:
 Use:
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 ```
 
-Some older examples may use `0.1` or `0.4`, but AI agents should default to `0.3` for current compatibility. Studio tolerates additional extension fields documented here, but the stable baseline remains v0.3.
+Some older historical examples or docs may mention `0.1`, `0.3`, or `0.4`, but AI agents should default to `0.5` for current compatibility. Studio tolerates additional extension fields documented here, and the stable baseline remains v0.5.
 
 ### YAML rules
 
@@ -483,7 +483,7 @@ Some older examples may use `0.1` or `0.4`, but AI agents should default to `0.3
 Minimal valid file:
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 800
   height: 600
@@ -1656,7 +1656,7 @@ Before returning YAML, verify:
 ### 21.1 Glass card
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 900
   height: 600
@@ -1742,7 +1742,7 @@ layers:
 ### 21.2 Icon mark with reusable sparkle def
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 512
   height: 512
@@ -1792,7 +1792,7 @@ layers:
 ### 21.3 Auto-layout feature row
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 1000
   height: 500
@@ -1855,7 +1855,7 @@ layers:
 This is the pattern used by `examples/26-gradient-seal-demo.npng`: one editable silhouette path, separate facial details, separate highlight/shadow paths, and a gradient background.
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 900
   height: 900
@@ -1935,7 +1935,7 @@ The canonical output remains:
 
 ````markdown
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 1200
   height: 800

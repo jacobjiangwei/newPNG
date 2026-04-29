@@ -31,7 +31,7 @@ nextPNG/
 │   ├── server.js               # Custom server (NOT used in deployment — standalone has its own)
 │   └── package.json
 ├── spec/
-│   ├── npng-v3.md              # npng format specification (v0.3 baseline)
+│   ├── npng-v5.md              # npng format specification (v0.5 baseline)
 │   ├── AI_GENERATION_GUIDE.md  # Prompt-friendly rules for AI-generated npng
 │   └── FORMAT_ROADMAP.md       # Format evolution roadmap
 ├── examples/                   # 22+ example .npng files
@@ -95,7 +95,7 @@ nextPNG/
 - Modify `deploy.yml` without understanding the standalone output structure
 - Overwrite `.next/standalone/server.js` — Next.js generates its own, and the custom `web/server.js` is NOT used in deployment
 - Add `ANTHROPIC_API_KEY` or any secrets to source code
-- Delete or modify `spec/npng-v3.md` without explicit instructions — it's the format source of truth
+- Delete or modify `spec/npng-v5.md` without explicit instructions — it's the format source of truth
 - Over-engineer. This project follows strict phased development (see below)
 
 ### Do:
@@ -103,7 +103,7 @@ nextPNG/
 - Keep changes minimal and focused
 - Follow existing code patterns and naming conventions
 - Use Tailwind for styling, match the dark theme
-- Refer to `spec/npng-v3.md` when working on renderer or format-related features
+- Refer to `spec/npng-v5.md` when working on renderer or format-related features
 - Refer to `spec/AI_GENERATION_GUIDE.md` when working on AI prompts or generated examples
 - Refer to `examples/*.npng` for real-world format usage
 - Update `PROGRESS.md` when completing major milestones
@@ -123,7 +123,7 @@ Do NOT implement Phase 2/3 features unless explicitly asked. Stay focused on the
 The npng format is a YAML-based vector graphics format. Key structure:
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 800
   height: 600
@@ -144,7 +144,7 @@ layers:
 
 Supported core element types: `rect`, `ellipse`, `line`, `text`, `path`, `group`, `use`; the Studio also supports `image`, `frame`, and component instances.
 
-The renderer (`web/src/lib/renderer.ts`) supports all v0.3/v0.4 features including gradients, transforms, blend modes, filters, clip paths, masks, and defs/use references. The full spec is in `spec/npng-v3.md`.
+The renderer (`web/src/lib/renderer.ts`) supports all v0.5 features including gradients, transforms, blend modes, filters, clip paths, masks, and defs/use references. The full spec is in `spec/npng-v5.md`.
 
 ## Key design principles
 

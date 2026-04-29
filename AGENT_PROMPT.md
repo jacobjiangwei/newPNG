@@ -131,7 +131,7 @@ az webapp deployment source config-local-git --name nextpng-app --resource-group
 
 格式规范和演进路线是独立于 Web App 的核心 initiative，详见：
 
-- **当前规范**：`spec/npng-v3.md`（v0.3 基线，v0.4 在此基础上加了布尔运算/fill rule/opacity/transform origin）
+- **当前规范**：`spec/npng-v5.md`（v0.5 当前规范，包含布尔运算、fill rule、opacity、transform origin 等已实现能力）
 - **格式路线图**：`spec/FORMAT_ROADMAP.md`（对标 Figma + Photoshop 全部能力的演进计划）
 
 格式的目标是承载 Figma-like 设计稿的结构：图层、对象、文本、样式、组件、约束、效果和导出语义。Web App 的渲染器和编辑器应逐步跟进格式演进，让 npng 成为 AI 与人类都能稳定编辑的设计源码。

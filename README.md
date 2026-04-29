@@ -16,7 +16,7 @@ nextPNG takes a different path: **AI generates editable design source**. The ima
 | Design studio | https://nextpng.org/editing |
 | Online npng viewer | https://nextpng.org/viewer |
 | AI generation guide | https://github.com/jacobjiangwei/nextPNG/blob/main/spec/AI_GENERATION_GUIDE.md |
-| npng format spec | https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v3.md |
+| npng format spec | https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v5.md |
 
 ## Why nextPNG exists
 
@@ -62,7 +62,7 @@ Export sharp PNG or share .npng text
 A tiny example:
 
 ```yaml
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 640
   height: 360

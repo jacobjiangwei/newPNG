@@ -20,7 +20,7 @@ import { renderNpng, preloadNpngImages } from "npng-renderer";
 import type { NpngDocument } from "npng-renderer";
 
 const yamlString = `
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 400
   height: 300
@@ -92,7 +92,7 @@ const svgString = npngToSvg(doc);
 
 ## Format Spec
 
-See the [npng format specification](https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v3.md).
+See the [npng format specification](https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v5.md).
 
 ## License
 

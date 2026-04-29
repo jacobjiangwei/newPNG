@@ -9,7 +9,7 @@
   "properties": {
     "npng": {
       "type": "string",
-      "enum": ["0.3", "0.4"]
+      "enum": ["0.3", "0.4", "0.5"]
     },
     "canvas": {
       "type": "object",

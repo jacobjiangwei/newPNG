@@ -25,7 +25,7 @@ import {
   type StoredNpngProject,
 } from "../lib/projectStorage";
 
-const SATISFACTION_PEACH_YAML = `npng: "0.4"
+const SATISFACTION_PEACH_YAML = `npng: "0.5"
 canvas:
   width: 760
   height: 620
@@ -399,7 +399,7 @@ layers:
         align: center
 `;
 
-const PURE_APPLE_DESIGN_YAML = `npng: "0.4"
+const PURE_APPLE_DESIGN_YAML = `npng: "0.5"
 canvas:
   width: 760
   height: 620
@@ -630,7 +630,7 @@ layers:
 
 `;
 
-const FOUR_TILE_WINDOW_MARK_YAML = `npng: "0.4"
+const FOUR_TILE_WINDOW_MARK_YAML = `npng: "0.5"
 canvas:
   width: 800
   height: 520
@@ -946,23 +946,23 @@ const EXAMPLES = [
   },
   {
     name: "Hello World",
-    yaml: `npng: "0.1"\ncanvas:\n  width: 400\n  height: 300\n  background: "#FFFFFF"\nlayers:\n  - name: "shapes"\n    elements:\n      - type: rect\n        x: 30\n        y: 30\n        width: 120\n        height: 80\n        fill: "#E74C3C"\n      - type: ellipse\n        cx: 280\n        cy: 100\n        rx: 60\n        ry: 40\n        fill: "#3498DB"\n      - type: text\n        x: 200\n        y: 240\n        content: "Hello nextPNG!"\n        font_size: 20\n        font_family: "sans-serif"\n        font_weight: "bold"\n        fill: "#FFFFFF"\n        align: "center"`,
+    yaml: `npng: "0.5"\ncanvas:\n  width: 400\n  height: 300\n  background: "#FFFFFF"\nlayers:\n  - name: "shapes"\n    elements:\n      - type: rect\n        x: 30\n        y: 30\n        width: 120\n        height: 80\n        fill: "#E74C3C"\n      - type: ellipse\n        cx: 280\n        cy: 100\n        rx: 60\n        ry: 40\n        fill: "#3498DB"\n      - type: text\n        x: 200\n        y: 240\n        content: "Hello nextPNG!"\n        font_size: 20\n        font_family: "sans-serif"\n        font_weight: "bold"\n        fill: "#FFFFFF"\n        align: "center"`,
   },
   {
     name: "Gradient Star",
-    yaml: `npng: "0.1"\ncanvas:\n  width: 400\n  height: 400\n  background: "#1A1A2E"\nlayers:\n  - name: "star"\n    elements:\n      - type: path\n        d: "M 200 50 L 230 140 L 325 140 L 248 195 L 275 285 L 200 232 L 125 285 L 152 195 L 75 140 L 170 140 Z"\n        fill:\n          type: linear-gradient\n          x1: 75\n          y1: 50\n          x2: 325\n          y2: 285\n          stops:\n            - offset: 0\n              color: "#FFD700"\n            - offset: 1\n              color: "#FF8C00"\n        stroke:\n          color: "#B8860B"\n          width: 2`,
+    yaml: `npng: "0.5"\ncanvas:\n  width: 400\n  height: 400\n  background: "#1A1A2E"\nlayers:\n  - name: "star"\n    elements:\n      - type: path\n        d: "M 200 50 L 230 140 L 325 140 L 248 195 L 275 285 L 200 232 L 125 285 L 152 195 L 75 140 L 170 140 Z"\n        fill:\n          type: linear-gradient\n          x1: 75\n          y1: 50\n          x2: 325\n          y2: 285\n          stops:\n            - offset: 0\n              color: "#FFD700"\n            - offset: 1\n              color: "#FF8C00"\n        stroke:\n          color: "#B8860B"\n          width: 2`,
   },
   {
     name: "Layer Opacity",
-    yaml: `npng: "0.1"\ncanvas:\n  width: 400\n  height: 400\n  background: "#1A1A2E"\nlayers:\n  - name: "background-shapes"\n    opacity: 0.3\n    elements:\n      - type: ellipse\n        cx: 100\n        cy: 100\n        rx: 150\n        ry: 150\n        fill: "#E94560"\n      - type: ellipse\n        cx: 300\n        cy: 300\n        rx: 150\n        ry: 150\n        fill: "#0F3460"\n  - name: "main-content"\n    elements:\n      - type: rect\n        x: 50\n        y: 50\n        width: 300\n        height: 300\n        rx: 20\n        ry: 20\n        fill: "#16213E80"\n        stroke:\n          color: "#E94560"\n          width: 2\n      - type: text\n        x: 200\n        y: 200\n        content: "Layers"\n        font_size: 48\n        font_family: "sans-serif"\n        font_weight: "bold"\n        fill: "#FFFFFF"\n        align: "center"`,
+    yaml: `npng: "0.5"\ncanvas:\n  width: 400\n  height: 400\n  background: "#1A1A2E"\nlayers:\n  - name: "background-shapes"\n    opacity: 0.3\n    elements:\n      - type: ellipse\n        cx: 100\n        cy: 100\n        rx: 150\n        ry: 150\n        fill: "#E94560"\n      - type: ellipse\n        cx: 300\n        cy: 300\n        rx: 150\n        ry: 150\n        fill: "#0F3460"\n  - name: "main-content"\n    elements:\n      - type: rect\n        x: 50\n        y: 50\n        width: 300\n        height: 300\n        rx: 20\n        ry: 20\n        fill: "#16213E80"\n        stroke:\n          color: "#E94560"\n          width: 2\n      - type: text\n        x: 200\n        y: 200\n        content: "Layers"\n        font_size: 48\n        font_family: "sans-serif"\n        font_weight: "bold"\n        fill: "#FFFFFF"\n        align: "center"`,
   },
   {
     name: "Transforms",
-    yaml: `npng: "0.1"\ncanvas:\n  width: 400\n  height: 400\n  background: "#FFFFFF"\nlayers:\n  - name: "pinwheel"\n    elements:\n      - type: rect\n        x: -60\n        y: -10\n        width: 120\n        height: 20\n        fill: "#E74C3C"\n        transform:\n          translate: [200, 200]\n          rotate: 0\n      - type: rect\n        x: -60\n        y: -10\n        width: 120\n        height: 20\n        fill: "#3498DB"\n        transform:\n          translate: [200, 200]\n          rotate: 45\n      - type: rect\n        x: -60\n        y: -10\n        width: 120\n        height: 20\n        fill: "#2ECC71"\n        transform:\n          translate: [200, 200]\n          rotate: 90\n      - type: rect\n        x: -60\n        y: -10\n        width: 120\n        height: 20\n        fill: "#F39C12"\n        transform:\n          translate: [200, 200]\n          rotate: 135\n      - type: ellipse\n        cx: 0\n        cy: 0\n        rx: 15\n        ry: 15\n        fill: "#2C3E50"\n        transform:\n          translate: [200, 200]`,
+    yaml: `npng: "0.5"\ncanvas:\n  width: 400\n  height: 400\n  background: "#FFFFFF"\nlayers:\n  - name: "pinwheel"\n    elements:\n      - type: rect\n        x: -60\n        y: -10\n        width: 120\n        height: 20\n        fill: "#E74C3C"\n        transform:\n          translate: [200, 200]\n          rotate: 0\n      - type: rect\n        x: -60\n        y: -10\n        width: 120\n        height: 20\n        fill: "#3498DB"\n        transform:\n          translate: [200, 200]\n          rotate: 45\n      - type: rect\n        x: -60\n        y: -10\n        width: 120\n        height: 20\n        fill: "#2ECC71"\n        transform:\n          translate: [200, 200]\n          rotate: 90\n      - type: rect\n        x: -60\n        y: -10\n        width: 120\n        height: 20\n        fill: "#F39C12"\n        transform:\n          translate: [200, 200]\n          rotate: 135\n      - type: ellipse\n        cx: 0\n        cy: 0\n        rx: 15\n        ry: 15\n        fill: "#2C3E50"\n        transform:\n          translate: [200, 200]`,
   },
 ];
 
-const DEFAULT_YAML = `npng: "0.1"
+const DEFAULT_YAML = `npng: "0.5"
 canvas:
   width: 600
   height: 500
@@ -1380,7 +1380,7 @@ function LandingPage() {
               </div>
               <div className="grid min-h-[430px] grid-cols-[0.88fr_1.12fr]">
                 <div className="border-r border-zinc-800 bg-[#10131c] p-5 font-mono text-[11px] leading-5 text-zinc-400">
-                  <div className="text-blue-300">npng: &quot;0.4&quot;</div>
+                  <div className="text-blue-300">npng: &quot;0.5&quot;</div>
                   <div>canvas:</div>
                   <div className="pl-4">width: 760</div>
                   <div className="pl-4">height: 620</div>

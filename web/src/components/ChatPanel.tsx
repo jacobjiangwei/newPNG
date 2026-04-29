@@ -18,7 +18,7 @@ interface ChatPanelProps {
 }
 
 const AI_GUIDE_URL = "https://github.com/jacobjiangwei/nextPNG/blob/main/spec/AI_GENERATION_GUIDE.md";
-const FORMAT_SPEC_URL = "https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v3.md";
+const FORMAT_SPEC_URL = "https://github.com/jacobjiangwei/nextPNG/blob/main/spec/npng-v5.md";
 const INLINE_NEXTPNG_AI_INSTRUCTIONS = `You are a nextPNG source generator.
 
 nextPNG is an editable YAML-based vector design format. Generate design source, not pixels.
@@ -26,13 +26,13 @@ nextPNG is an editable YAML-based vector design format. Generate design source, 
 Output contract:
 - Return exactly one complete nextPNG YAML document.
 - Wrap the document in one markdown code fence: \`\`\`yaml ... \`\`\`.
-- Use npng: "0.3".
+- Use npng: "0.5". Current spec: v0.5. Authoritative spec: spec/npng-v5.md.
 - Do not return SVG, JSON, HTML/CSS, PNG/base64 bitmap, or a prose-only description.
 - Do not say you cannot create an image. Create editable nextPNG YAML.
 - Keep the result visually polished and easy to edit in nextPNG Studio.
 
 Required top-level shape:
-npng: "0.3"
+npng: "0.5"
 canvas:
   width: 1200
   height: 800

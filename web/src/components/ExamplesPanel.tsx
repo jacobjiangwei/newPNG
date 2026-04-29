@@ -6,7 +6,7 @@ const EXAMPLES: { name: string; category: string; yaml: string }[] = [
   {
     name: "Hello World",
     category: "Basic",
-    yaml: `npng: "0.1"
+    yaml: `npng: "0.5"
 canvas:
   width: 400
   height: 300
@@ -47,7 +47,7 @@ layers:
   {
     name: "Gradient Star",
     category: "Basic",
-    yaml: `npng: "0.1"
+    yaml: `npng: "0.5"
 canvas:
   width: 400
   height: 400
@@ -75,7 +75,7 @@ layers:
   {
     name: "Layer Opacity",
     category: "Basic",
-    yaml: `npng: "0.1"
+    yaml: `npng: "0.5"
 canvas:
   width: 400
   height: 400
@@ -122,7 +122,7 @@ layers:
   {
     name: "Transforms",
     category: "Basic",
-    yaml: `npng: "0.1"
+    yaml: `npng: "0.5"
 canvas:
   width: 400
   height: 400
@@ -178,7 +178,7 @@ layers:
   {
     name: "Minimal Logo",
     category: "Logo",
-    yaml: `npng: "0.4"
+    yaml: `npng: "0.5"
 canvas:
   width: 400
   height: 400
@@ -236,7 +236,7 @@ layers:
   {
     name: "App Icon",
     category: "Icon",
-    yaml: `npng: "0.4"
+    yaml: `npng: "0.5"
 canvas:
   width: 256
   height: 256
@@ -277,7 +277,7 @@ layers:
   {
     name: "Business Card",
     category: "Card",
-    yaml: `npng: "0.4"
+    yaml: `npng: "0.5"
 canvas:
   width: 600
   height: 340
@@ -359,7 +359,7 @@ layers:
   {
     name: "Badge / Label",
     category: "Badge",
-    yaml: `npng: "0.4"
+    yaml: `npng: "0.5"
 canvas:
   width: 280
   height: 100
@@ -406,7 +406,7 @@ layers:
   {
     name: "Event Poster",
     category: "Poster",
-    yaml: `npng: "0.4"
+    yaml: `npng: "0.5"
 canvas:
   width: 600
   height: 800

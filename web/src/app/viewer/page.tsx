@@ -7,7 +7,7 @@ import { decodeNpngShare, encodeNpngShare, readNpngSharePayload } from "../../li
 import { preloadNpngImages, renderNpng } from "../../lib/renderer";
 import type { NpngDocument } from "../../lib/types";
 
-const SAMPLE_NPNG = `npng: "0.3"
+const SAMPLE_NPNG = `npng: "0.5"
 canvas:
   width: 720
   height: 420
