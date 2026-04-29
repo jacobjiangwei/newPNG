@@ -1,0 +1,39 @@
+{
+  "name": "npng-renderer",
+  "version": "0.3.0",
+  "description": "Render npng vector graphics format to Canvas 2D or SVG",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "npng",
+    "vector-graphics",
+    "canvas",
+    "svg",
+    "renderer",
+    "ai-native",
+    "design"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jacobjiangwei/nextPNG.git",
+    "directory": "packages/npng-renderer"
+  },
+  "homepage": "https://nextpng.org",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "js-yaml": "^4.0.0"
+  }
+}
